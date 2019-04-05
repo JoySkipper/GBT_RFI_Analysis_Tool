@@ -60,11 +60,11 @@ def read_file(filepath):#use this function to read in a particular file and retu
 
 		#if it's a column title indicating the names of each column
 		elif line_value.startswith("#")==True and (":" in line_value) == False: 
-			column_names = filter(None,((line_value.strip('#').strip('\n')).split(" ")))#creating a list of all the column names
+            column_names = list(filter(None,((line_value.strip('#').strip('\n')).split(" "))))#creating a list of all the column names
 				
 		#if not all other cases then this line must just be the values given in the columns		
 		else:
-			new_line = filter(None,((line_value.strip('\n')).split(" ")))#create a list of all the column values
+            new_line = list(filter(None,((line_value.strip('\n')).split(" "))))#create a list of all the column values
 			window,channel,frequency,intensity = ReadFileLine_ColumnValues(has_header,new_line,column_names,window,channel,frequency,intensity)
 			if intensity[-1] == "NaN":#getting rid of bogus values
 				del window[-1]
@@ -151,8 +151,8 @@ def ReadFileLine_ColumnValues(has_header,line_value,column_names,window,channel,
 	# something like 1471.456 for frequency and 800.000 for intensity or something (these are made up numbers for example only)
 	overlapping,column_count = CheckFor_OverlappingColumns(line_value)
 	if overlapping == "True":
-		print "There is a file you have input that contains a column which has merged into the other. Here is the line: \n"
-		print line_value
+        print("There is a file you have input that contains a column which has merged into the other. Here is the line: \n")
+        print(line_value)
 		window,channel,frequency,intensity = DealWith_Overlapping(column_count, line_value,window,channel,frequency,intensity)
 		return window,channel,frequency,intensity
 					
@@ -179,13 +179,13 @@ def ReadFileLine_ColumnValues(has_header,line_value,column_names,window,channel,
 		frequency.append(line_value[0])
 		intensity.append(line_value[1])	
 	else:	
-		print "there is a problem. The file reader could not parse this file. Please look at the file format and try again."
-		print "this is the filepath:\n"
-		print filepath
-		print "these are the column names:\n"
-		print column_names
-		print "this is the line in the file that this file parser broke on:\n"
-		print line_value				
+        print("there is a problem. The file reader could not parse this file. Please look at the file format and try again.")
+        print("this is the filepath:\n")
+        print(filepath)
+        print("these are the column names:\n")
+        print(column_names)
+        print("this is the line in the file that this file parser broke on:\n")
+        print(line_value)                
 		problem = raw_input()#this is just to make the code stop
 	return(window,channel,frequency,intensity)
 
@@ -216,6 +216,7 @@ for filename in os.listdir(path):
 
 #going thru each file one by one
 for i in list_o_paths:
+    print("reading "+str(i)+"...")
 	dictionary = read_file(i)
 	list_o_structs.append(dictionary)#creating a structure of dictionaries with header info for each file, and lists of the values
 
@@ -243,11 +244,11 @@ for count,SQL_dict in enumerate(list_o_structs):
 			else:
 				f.write("\""+str(key0)+"\"")
 		f.write("\n")
-#	if count == 0:
-#		test = open('title_for_SQL.txt','w')
-#		for key0, value0 in SQL_dict.iteritems():
-#			test.write(str(key0)+",")
-#		test.write("\n")
+#    if count == 0:
+#        test = open('title_for_SQL.txt','w')
+#        for key0, value0 in SQL_dict.iteritems():
+#            test.write(str(key0)+",")
+#        test.write("\n")
 	for key,value in SQL_dict.iteritems():
 		if str(type(value)) == "<type \'list\'>":
 			for fnum,fval in enumerate(value):
@@ -272,18 +273,18 @@ for count,SQL_dict in enumerate(list_o_structs):
 
 
 for count,SQL_dict in enumerate(list_o_structs): #iterating through each dictionary one by one
-	print "starting to write data to file number "+str(count)+"...\n"
+    print("starting to write data to file number "+str(count)+"...\n")
 	#keys = []
 	for key,value in SQL_dict.iteritems():#iterating through each field in that dictionary
 		if str(type(value)) == "<type \'list\'>":#if that field is multi-valued
 			for fnum,fval in enumerate(value):#for each value in that multi-valued set
-		#		keys = []
+        #        keys = []
 				for key0,value0 in SQL_dict.iteritems():
 					SQL_dict.update({key0:None_string(SQL_dict.get(key0),len(value))})
 
 
-		#		 	else:
-		#				keys.append("\""+str(value2)+"\"")
+        #             else:
+        #                keys.append("\""+str(value2)+"\"")
 				#this is each time we should add
 				"""
 				print SQL_dict
@@ -326,8 +327,8 @@ for count,SQL_dict in enumerate(list_o_structs): #iterating through each diction
 
 	#cursor.execute(add_values)
 	#if count == 0:
-	#	break
-	print "file "+str(count)+" written out of "+str(len(list_o_structs))+" \n"	
+    #    break
+    print("file "+str(count)+" written out of "+str(len(list_o_structs))+" \n")  
 
 
 cnx.close()
