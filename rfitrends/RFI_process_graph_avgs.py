@@ -29,7 +29,6 @@ cursor = cnx.cursor()
 
 print("fetching data...")
 query = (" SELECT * FROM RFI_Avgs_expanded; ")
-#query1 =(" SELECT Frequency,mean_intensity FROM RFI_Avgs; ") 
 cursor.execute(query)
 
 frequency = []
@@ -59,16 +58,6 @@ for row in result:
 
 print("starting graphs...")
 
-"""
-print("frequency: "+str(frequency[0:10]))
-print("mean intensity: "+str(mean_intensity[0:10]))
-print("max intensity: "+str(max_intensity[0:10]))
-print("min_intensity: "+str(min_intensity[0:10]))
-print("median intensity: "+str(median_intensity[0:10]))
-print("low percentile: "+str(low_percentile_intensity[0:10]))
-print("high percentile: "+str(high_percentile_intensity[0:10]))
-"""
-
 
 print("Making graph with log y-axis...")
 plt.plot(frequency,max_intensity, color="red",label='max or min')
@@ -76,17 +65,14 @@ plt.plot(frequency,min_intensity, color="red")
 # These next two lines will plot the 2.75 and 97.5 percentiles, i.e. showing us the range that encompasses 95% of the data
 plt.plot(frequency,low_percentile_intensity, color="magenta",label='high or low percentiles (2.75 or 97.5)')
 plt.plot(frequency,high_percentile_intensity, color="magenta")
-
 plt.plot(frequency,mean_intensity, color="blue",label='mean')
 # since these are Gaussian random variables the mean and median will be nearly equal
 plt.plot(frequency,median_intensity, color="green",label='median')
 plt.legend(loc='upper right')
-
 plt.xlabel("Frequency (MHz)")
 plt.ylabel("log(Intensity) (Jy)")
 plt.yscale('log')
 plt.show()
-
 plt.clf()
 
 
@@ -96,16 +82,14 @@ plt.plot(frequency,min_intensity, color="red")
 # These next two lines will plot the 2.75 and 97.5 percentiles, i.e. showing us the range that encompasses 95% of the data
 plt.plot(frequency,low_percentile_intensity, color="magenta",label='high or low percentiles (2.75 or 97.5)')
 plt.plot(frequency,high_percentile_intensity, color="magenta")
-
 plt.plot(frequency,mean_intensity, color="blue",label='mean')
 # since these are Gaussian random variables the mean and median will be nearly equal
 plt.plot(frequency,median_intensity, color="green",label='median')
 plt.legend(loc='upper right')
-
 plt.xlabel("Frequency (MHz)")
 plt.ylabel("Intensity (Jy)")
-
 plt.show()
+plt.clf()
 
 
 
@@ -115,18 +99,15 @@ plt.plot(frequency,min_intensity, color="red")
 # These next two lines will plot the 2.75 and 97.5 percentiles, i.e. showing us the range that encompasses 95% of the data
 plt.plot(frequency,low_percentile_intensity, color="magenta",label='high or low percentiles (2.75 or 97.5)')
 plt.plot(frequency,high_percentile_intensity, color="magenta")
-
 plt.plot(frequency,mean_intensity, color="blue",label='mean')
 # since these are Gaussian random variables the mean and median will be nearly equal
 plt.plot(frequency,median_intensity, color="green",label='median')
 plt.legend(loc='upper right')
-
 plt.xlabel("Frequency (MHz)")
 plt.ylabel("log(Intensity) (Jy)")
 plt.yscale('log')
 plt.xlim(600.00,700.0)
 plt.show()
-
 plt.clf()
 
 
