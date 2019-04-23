@@ -218,8 +218,17 @@ def ReadFileLine_ColumnValues(has_header,line_value,column_names,window,channel,
         frequency.append(line_value[1])
         intensity.append(line_value[2])
     elif column_names[0] == "Channel" and column_names[1] == "Frequency(GHz)" and column_names[2] == "Intensity(Jy)":# 3 columns, but the person decided to put the frequency in GHz, so change back to MHz and add
+        if float(line_value[1])<150.0:
+            frequency.append(str(float(line_value[1])*1000.0)) #Converting to MHz
+            new_column_names[1] = "Frequency (MHz)"
+            #print(line_value[1])
+            if float(line_value[1])*1000.0 < 150.0:
+                print(line_value[1])
+                input("stop, line 263")
+        else: 
+            frequency.append(line_value[1])        
         channel.append(line_value[0])
-        frequency.append(str(float(line_value[1])*1000.0))
+        
         intensity.append(line_value[2])        
     elif has_header == False:# Finally, if the file does not have a header, it has two columns that are frequency and intensity
         #print(float(line_value[0]))
