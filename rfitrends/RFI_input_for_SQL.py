@@ -268,7 +268,8 @@ for i in list_o_paths:
 
 
 
-exit()
+
+
 
 
 username = input("Please enter SQL database username... ")
@@ -363,7 +364,7 @@ for count,SQL_dict in enumerate(list_o_structs): #iterating through each diction
                 """
 
 
-                add_values = "INSERT INTO RFI_2 (feed,frontend,azimuth,projid,frequency_resolution,Window,exposure,utc,date,number_IF_Windows,Channel,backend,mjd,Frequency,lst,filename,polarization,source,tsys,frequency_type,units,Intensity,scan_number,elevation) VALUES (\""+str(SQL_dict.get("feed"))+"\",\""+str(SQL_dict.get("frontend"))+"\",\""+str(SQL_dict.get("azimuth (deg)"))+"\",\""+str(SQL_dict.get("projid"))+"\",\""+str(SQL_dict.get("frequency_resolution"))+"\",\""+str(SQL_dict.get("Window")[fnum])+"\",\""+str(SQL_dict.get("exposure (sec)"))+"\",\""+str(SQL_dict.get("utc (hrs)"))+"\",\""+str(SQL_dict.get("date"))+"\",\""+str(SQL_dict.get("number_IF_Windows"))+"\",\""+str(SQL_dict.get("Channel")[fnum])+"\",\""+str(SQL_dict.get("backend"))+"\",\""+str(SQL_dict.get("mjd"))+"\",\""+str(SQL_dict.get("Frequency (MHz)")[fnum])+"\",\""+str(SQL_dict.get("lst (hrs)"))+"\",\""+str(SQL_dict.get("filename"))+"\",\""+str(SQL_dict.get("polarization"))+"\",\""+str(SQL_dict.get("source"))+"\",\""+str(SQL_dict.get("tsys"))+"\",\""+str(SQL_dict.get("frequency_type"))+"\",\""+str(SQL_dict.get("units"))+"\",\""+str(SQL_dict.get("Intensity (Jy)")[fnum])+"\",\""+str(SQL_dict.get("scan_number"))+"\",\""+str(SQL_dict.get("elevation (deg)"))+"\");"
+                add_values = "INSERT INTO RFI_3 (feed,frontend,azimuth,projid,frequency_resolution,Window,exposure,utc,date,number_IF_Windows,Channel,backend,mjd,Frequency,lst,filename,polarization,source,tsys,frequency_type,units,Intensity,scan_number,elevation) VALUES (\""+str(SQL_dict.get("feed"))+"\",\""+str(SQL_dict.get("frontend"))+"\",\""+str(SQL_dict.get("azimuth (deg)"))+"\",\""+str(SQL_dict.get("projid"))+"\",\""+str(SQL_dict.get("frequency_resolution"))+"\",\""+str(SQL_dict.get("Window")[fnum])+"\",\""+str(SQL_dict.get("exposure (sec)"))+"\",\""+str(SQL_dict.get("utc (hrs)"))+"\",\""+str(SQL_dict.get("date"))+"\",\""+str(SQL_dict.get("number_IF_Windows"))+"\",\""+str(SQL_dict.get("Channel")[fnum])+"\",\""+str(SQL_dict.get("backend"))+"\",\""+str(SQL_dict.get("mjd"))+"\",\""+str(SQL_dict.get("Frequency (MHz)")[fnum])+"\",\""+str(SQL_dict.get("lst (hrs)"))+"\",\""+str(SQL_dict.get("filename"))+"\",\""+str(SQL_dict.get("polarization"))+"\",\""+str(SQL_dict.get("source"))+"\",\""+str(SQL_dict.get("tsys"))+"\",\""+str(SQL_dict.get("frequency_type"))+"\",\""+str(SQL_dict.get("units"))+"\",\""+str(SQL_dict.get("Intensity (Jy)")[fnum])+"\",\""+str(SQL_dict.get("scan_number"))+"\",\""+str(SQL_dict.get("elevation (deg)"))+"\");"
                 cursor.execute(add_values)
 
             break
