@@ -232,8 +232,8 @@ def ReadFileLine_ColumnValues(has_header,line_value,column_names,window,channel,
         print(column_names)
         print("this is the line in the file that this file parser broke on:\n")
         print(line_value)                
-        problem = raw_input()#this is just to make the code stop
-    return(window,channel,frequency,intensity)
+    
+    return(window,channel,frequency,intensity,new_column_names)
 
 
 def None_string(value,value_len):
