@@ -270,7 +270,6 @@ for i in list_o_paths:
 
 exit()
 
-import mysql.connector
 
 username = input("Please enter SQL database username... ")
 password = input("Please enter SQL database password... ")
