@@ -200,7 +200,7 @@ def ReadFileLine_ColumnValues(has_header,line_value,column_names,window,channel,
         print("There is a file you have input that contains a column which has merged into the other. Here is the line: \n")
         print(line_value)
         window,channel,frequency,intensity = DealWith_Overlapping(column_count, line_value,window,channel,frequency,intensity)
-        return window,channel,frequency,intensity
+        return window,channel,frequency,intensity,new_column_names
                     
     #now that we know this is a correctly made line, we check which format this file is in, is it 4 columns? 3? What are the values in these columns? 
     elif (column_names[0] == "Window" or column_names[0] == "IFWindow") and column_names[1] == "Channel" and (column_names[2] == "Frequency(MHz)" or column_names[2] == "Frequency MHz)") and column_names[3] == "Intensity(Jy)":#4 regular columns
