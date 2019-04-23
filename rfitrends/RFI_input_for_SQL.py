@@ -72,12 +72,16 @@ def read_file(filepath):#use this function to read in a particular file and retu
         #if not all other cases then this line must just be the values given in the columns        
         else:
             new_line = list(filter(None,((line_value.strip('\n')).split(" "))))#create a list of all the column values
-            window,channel,frequency,intensity = ReadFileLine_ColumnValues(has_header,new_line,column_names,window,channel,frequency,intensity)
+            window,channel,frequency,intensity,column_names = ReadFileLine_ColumnValues(has_header,new_line,column_names,window,channel,frequency,intensity,filepath)
             if intensity[-1] == "NaN":#getting rid of bogus values
                 del window[-1]
                 del channel[-1]
                 del frequency[-1]
                 del intensity[-1]
+            #freqarray = np.asarray(frequency)
+            #if np.min(freqarray.astype(float)) >= 150.0 == False:
+                #print(frequency)
+                #exit()
     
     window_dictionary = {"Window":window}#update dictionary with a list for each column value
     channel_dictionary = {"Channel": channel}    
@@ -103,7 +107,6 @@ def ReadFileLine_NoHeader(dictionary_per_file,filepath):
     unix_timestamp = (os.path.getmtime(filepath))
     date = (datetime.datetime.utcfromtimestamp(unix_timestamp))
     dictionary_per_file.update({"date": (date.strftime('%Y-%m-%d %H:%M:%S'))})# gleaning info from filename
-    print(date)
     #Calculating MJD...
     jd = julian.to_jd(date+ datetime.timedelta(hours=12),fmt='jd')
     mjd = jd  - 2400000.5
@@ -131,13 +134,13 @@ def ReadFileLine_NoHeader(dictionary_per_file,filepath):
     LST = LSThh + LSTmm/60.0 + LSTss/3600.0
     dictionary_per_file.update({"lst": LST})
 
-    dictionary_per_file.update({"polarization":"NaN"})
+    dictionary_per_file.update({"polarization":filename[6]})
     dictionary_per_file.update({"source":"NaN"})
     dictionary_per_file.update({"tsys":"NaN"})
     dictionary_per_file.update({"frequency_type":"NaN"})
     dictionary_per_file.update({"Units":"Jy"})
     dictionary_per_file.update({"scan_number":"NaN"})
-    dictionary_per_file.update({"elevation":"NaN"})
+    dictionary_per_file.update({"elevation": float(filename[8][2:])})
 
     
 
@@ -152,8 +155,7 @@ def ReadFileLine_HeaderValue(dictionary_per_file, line_value,filepath):
     header_name, header_value = line_value.split(":") # get the name assigned to the header and it's associated value, say "Date: 01-24-1995" or something
     header_name = header_name.strip(' \t\n\r#') #get rid of hashtags and anything but the text we need from these headers
     header_value = header_value.strip(' \t\n\r#')
-    if header_name == "Frequency(GHz)": #This is corrected in the column values as well, we basically want all our frequencies in the same units
-        header_name = "Frequency (Mhz)"
+
     header_line_dict = {header_name:header_value}#creating a dictionary with the header category and its value
     dictionary_per_file.update(header_line_dict)#adding that dictionary to the dictionary for this particular file
 
@@ -192,7 +194,8 @@ def DealWith_Overlapping(column_count,line_value,window,channel,frequency,intens
     
     
 
-def ReadFileLine_ColumnValues(has_header,line_value,column_names,window,channel,frequency,intensity):
+def ReadFileLine_ColumnValues(has_header,line_value,column_names,window,channel,frequency,intensity,filepath):
+    new_column_names = column_names
     # Unfortunately, we first have to check if the columns overlapped with themselves anywhere, such as the frequency values bleeding into intensity values to make 1471.456800.000 which should be 
     # something like 1471.456 for frequency and 800.000 for intensity or something (these are made up numbers for example only)
     overlapping,column_count = CheckFor_OverlappingColumns(line_value)
@@ -201,19 +204,61 @@ def ReadFileLine_ColumnValues(has_header,line_value,column_names,window,channel,
         print(line_value)
         window,channel,frequency,intensity = DealWith_Overlapping(column_count, line_value,window,channel,frequency,intensity)
         return window,channel,frequency,intensity,new_column_names
-                    
+       
     #now that we know this is a correctly made line, we check which format this file is in, is it 4 columns? 3? What are the values in these columns? 
-    elif (column_names[0] == "Window" or column_names[0] == "IFWindow") and column_names[1] == "Channel" and (column_names[2] == "Frequency(MHz)" or column_names[2] == "Frequency MHz)") and column_names[3] == "Intensity(Jy)":#4 regular columns
+    elif (column_names[0] == "Window" or column_names[0] == "IFWindow") and column_names[1] == "Channel" and (column_names[2] == "Frequency(MHz)" or column_names[2] == "Frequency (MHz)") and column_names[3] == "Intensity(Jy)":#4 regular columns
+        #print(float(line_value[2]))
+        if float(line_value[2])<150.0:
+            frequency.append(str(float(line_value[2])*1000.0)) #Converting to MHz
+            #print(str(float(line_value[2])*1000.0))
+            #input("stop")
+            new_column_names[2] = "Frequency (MHz)"
+            #print(line_value[2])
+            if float(line_value[2])*1000.0 < 150.0:
+                print(line_value[2])
+                input("stop, line 216")
+
         window.append(line_value[0])
         channel.append(line_value[1])
         frequency.append(line_value[2])
         intensity.append(line_value[3])
 
+    elif (column_names[0] == "Window" or column_names[0] == "IFWindow") and column_names[1] == "Channel" and (column_names[2] == "Frequency(GHz)" or column_names[2] == "Frequency GHz)") and column_names[3] == "Intensity(Jy)":
+        window.append(line_value[0])
+        channel.append(line_value[1])
+        #print(float(line_value[2]))
+        if float(line_value[2])<150.0:
+            frequency.append(str(float(line_value[2])*1000.0)) #Converting to MHz
+            new_column_names[2] = "Frequency(MHz)"
+            #print(line_value[2])
+            if float(line_value[2])*1000.0 < 150.0:
+                print(line_value[2])
+                input("stop, line 231")
+        else:#Must be mislabeled as GHz
+            frequency.append(line_value[2])
+            new_column_names[2] = "Frequency(MHz)"
+        intensity.append(line_value[3])
+
     elif column_names[0] == "Frequency(MHz)" and column_names[1] == "Intensity(Jy)":#2 regular columns)
+        #print(float(line_value[2]))
+        if float(line_value[0])<150.0:
+            frequency.append(str(float(line_value[0])*1000.0)) #Converting to MHz
+            new_column_names[0] = "Frequency (MHz)"    
+            #print(line_value[0])
+            if float(line_value[0])*1000.0 < 150.0:
+                print(line_value[0]) 
+                input("stop, line 243")   
         frequency.append(line_value[0])
         intensity.append(line_value[1])
 
-    elif column_names[0] == "Channel" and column_names[1] == "Frequency(MHz)" and column_names[2] == "Intensity(Jy)":#3 regular columns
+    elif column_names[0] == "Channel" and column_names[1] == "Frequency(MHz)" or column_names[1] == "Frequency (MHz)" and column_names[2] == "Intensity(Jy)":#3 regular columns
+        if float(line_value[1])<150.0:
+            frequency.append(str(float(line_value[1])*1000.0)) #Converting to MHz
+            new_column_names[1] = "Frequency (MHz)"  
+            #print(line_value[1])  
+            if float(line_value[1])*1000.0 < 150.0:
+                print(line_value[1])  
+                input("stop, line 253")  
         channel.append(line_value[0])
         frequency.append(line_value[1])
         intensity.append(line_value[2])
@@ -255,6 +300,7 @@ def ReadFileLine_ColumnValues(has_header,line_value,column_names,window,channel,
         print(column_names)
         print("this is the line in the file that this file parser broke on:\n")
         print(line_value)                
+        input()#this is just to make the code stop
     
     return(window,channel,frequency,intensity,new_column_names)
 
@@ -347,44 +393,47 @@ for count,SQL_dict in enumerate(list_o_structs):
 for count,SQL_dict in enumerate(list_o_structs): #iterating through each dictionary one by one
     print("starting to write data to file number "+str(count)+"...\n")
     #keys = []
-    for key,value in SQL_dict.iteritems():#iterating through each field in that dictionary
-        if str(type(value)) == "<type \'list\'>":#if that field is multi-valued
+    for key,value in SQL_dict.items():#iterating through each field in that dictionary
+        #print(key)
+        #print(value[0:10])
+        #print(str(type(value)))
+        if str(type(value)) == "<class \'list\'>":#if that field is multi-valued
             for fnum,fval in enumerate(value):#for each value in that multi-valued set
         #        keys = []
-                for key0,value0 in SQL_dict.iteritems():
-                    SQL_dict.update({key0:None_string(SQL_dict.get(key0),len(value))})
+               # for key0,value0 in SQL_dict.items():
+               #     SQL_dict.update({key0:None_string(SQL_dict.get(key0),len(value))})
 
 
         #             else:
         #                keys.append("\""+str(value2)+"\"")
                 #this is each time we should add
-                """
-                print SQL_dict
-                print SQL_dict.get("feed")
-                print SQL_dict.get("frontend")
-                print SQL_dict.get("azimuth (deg)")
-                print SQL_dict.get("projid")
-                print SQL_dict.get("frequency_resolution")
-                print SQL_dict.get("Window")[0:10]
-                print SQL_dict.get("exposure (sec)")
-                print SQL_dict.get("utc (hrs)")
-                print SQL_dict.get("date")
-                print SQL_dict.get("number_IF_Windows")
-                print SQL_dict.get("channel")[0:10]
-                print SQL_dict.get("backend")
-                print SQL_dict.get("mjd")
-                print SQL_dict.get("Frequency (MHz)")[0:10]
-                print SQL_dict.get("lst (hrs)")
-                print SQL_dict.get("filename")
-                print SQL_dict.get("polarization")
-                print SQL_dict.get("source")
-                print SQL_dict.get("tsys")
-                print SQL_dict.get("frequency_type")
-                print SQL_dict.get("units")
-                print SQL_dict.get("Intensity (Jy)")[0:10]
-                print SQL_dict.get("scan_number")
-                print SQL_dict.get("elevation (deg)")
-                """
+                #print("printing values...")
+                #print(SQL_dict)
+                #print(SQL_dict.get("feed"))
+                #print(SQL_dict.get("frontend"))
+                #print(SQL_dict.get("azimuth (deg)"))
+                #print(SQL_dict.get("projid"))
+                #print(SQL_dict.get("frequency_resolution"))
+                #print(SQL_dict.get("Window")[0:10])
+                #print(SQL_dict.get("exposure (sec)"))
+                #print(SQL_dict.get("utc (hrs)"))
+                #print(SQL_dict.get("date"))
+                #print(SQL_dict.get("number_IF_Windows"))
+                #print(SQL_dict.get("channel")[0:10])
+                #print(SQL_dict.get("backend"))
+                #print(SQL_dict.get("mjd"))
+                #print(SQL_dict.get("Frequency (MHz)")[0:10])
+                #print(SQL_dict.get("lst (hrs)"))
+                #print(SQL_dict.get("filename"))
+                #print(SQL_dict.get("polarization"))
+                #print(SQL_dict.get("source"))
+                #print(SQL_dict.get("tsys"))
+                #print(SQL_dict.get("frequency_type"))
+                #print(SQL_dict.get("units"))
+                #print(SQL_dict.get("Intensity (Jy)")[0:10])
+                #print(SQL_dict.get("scan_number"))
+                #print(SQL_dict.get("elevation (deg)"))
+                
 
 
                 add_values = "INSERT INTO RFI_3 (feed,frontend,azimuth,projid,frequency_resolution,Window,exposure,utc,date,number_IF_Windows,Channel,backend,mjd,Frequency,lst,filename,polarization,source,tsys,frequency_type,units,Intensity,scan_number,elevation) VALUES (\""+str(SQL_dict.get("feed"))+"\",\""+str(SQL_dict.get("frontend"))+"\",\""+str(SQL_dict.get("azimuth (deg)"))+"\",\""+str(SQL_dict.get("projid"))+"\",\""+str(SQL_dict.get("frequency_resolution"))+"\",\""+str(SQL_dict.get("Window")[fnum])+"\",\""+str(SQL_dict.get("exposure (sec)"))+"\",\""+str(SQL_dict.get("utc (hrs)"))+"\",\""+str(SQL_dict.get("date"))+"\",\""+str(SQL_dict.get("number_IF_Windows"))+"\",\""+str(SQL_dict.get("Channel")[fnum])+"\",\""+str(SQL_dict.get("backend"))+"\",\""+str(SQL_dict.get("mjd"))+"\",\""+str(SQL_dict.get("Frequency (MHz)")[fnum])+"\",\""+str(SQL_dict.get("lst (hrs)"))+"\",\""+str(SQL_dict.get("filename"))+"\",\""+str(SQL_dict.get("polarization"))+"\",\""+str(SQL_dict.get("source"))+"\",\""+str(SQL_dict.get("tsys"))+"\",\""+str(SQL_dict.get("frequency_type"))+"\",\""+str(SQL_dict.get("units"))+"\",\""+str(SQL_dict.get("Intensity (Jy)")[fnum])+"\",\""+str(SQL_dict.get("scan_number"))+"\",\""+str(SQL_dict.get("elevation (deg)"))+"\");"
