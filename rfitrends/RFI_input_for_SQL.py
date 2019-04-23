@@ -371,7 +371,7 @@ for count,SQL_dict in enumerate(list_o_structs): #iterating through each diction
     
 
             
-    #add_values = "INSERT INTO RFI_2 VALUES ("+keys[0]+","+keys[1]+","+keys[2]+","+keys[3]+","+keys[4]+","+keys[5]+","+keys[6]+","+keys[7]+","+keys[8]+","+keys[9]+","+keys[10]+","+keys[11]+","+keys[12]+","+keys[13]+","+keys[14]+","+keys[15]+","+keys[16]+","+keys[17]+","+keys[18]+","+keys[19]+","+keys[20]+","+keys[21]+","+keys[22]+");"
+    #add_values = "INSERT INTO RFI_3 VALUES ("+keys[0]+","+keys[1]+","+keys[2]+","+keys[3]+","+keys[4]+","+keys[5]+","+keys[6]+","+keys[7]+","+keys[8]+","+keys[9]+","+keys[10]+","+keys[11]+","+keys[12]+","+keys[13]+","+keys[14]+","+keys[15]+","+keys[16]+","+keys[17]+","+keys[18]+","+keys[19]+","+keys[20]+","+keys[21]+","+keys[22]+");"
 
     #cursor.execute(add_values)
     #if count == 0:
