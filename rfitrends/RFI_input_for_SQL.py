@@ -32,6 +32,7 @@ import re
 import julian
 import datetime
 import LST_calculator
+import mysql.connector
 
 #Section 1: These first functions are for reading in a file and parsing up the data into a single dictionary containing all the necessary values:
 #_____________________________________________________________
