@@ -171,7 +171,7 @@ def CheckFor_OverlappingColumns(line_value):
 def DealWith_Overlapping(column_count,line_value,window,channel,frequency,intensity):#NOTE: this happened only with one type of column set for me, needs to be modified to be workable with all column sets
         #This function deals with overlapping columns, when one column value bleeds into another. I.E. your frequency/intensity column is 400.1000.00 meaning a frequency of 400 and a intensity of 1000.0
 
-        split_value = int(raw_input("Please input the character number at which the columns need to be split, counting from the left (default is 8): \n") or "8")
+        split_value = int(input("Please input the character number at which the columns need to be split, counting from the left (default is 8): \n") or "8")
 
         if column_count == 0:
             window.append(line_value[0][0:split_value])
