@@ -1,7 +1,7 @@
 # GBT_RFI_Analysis_Tool
 A tool to analyze radio frequency interference data taken from the Green Bank Telescope
 
-##Note:
+## Note:
 This uses LST_calculator.py, which is code obtained from another GitHub page and edited for my purposes. Here is the citation:
 
 ***************************************************************************************

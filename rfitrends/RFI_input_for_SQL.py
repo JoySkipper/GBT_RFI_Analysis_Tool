@@ -33,46 +33,84 @@ import julian
 import datetime
 import LST_calculator
 import mysql.connector
+import getpass
+import GBT_receiver_specs
+import sys
+
+class FreqOutsideRcvrBoundsError(Exception):
+    pass
+
 
 #Section 1: These first functions are for reading in a file and parsing up the data into a single dictionary containing all the necessary values:
 #_____________________________________________________________
 ################################################################################################################################################################################################################################
 
 def read_file(filepath):#use this function to read in a particular file and return a dictionary with all header values and lists of the data
+    #database_to_put = 'RFI_3'
+    
     f = open(filepath, 'r') #open file
-    dictionary_per_file = {}
-    #these are lists containing column values that will be added to the dictionary later: 
+    formatted_RFI_file = {}
+    #these are lists containing column values that will be added to the dictionary later:
+    data = [] 
     window = []
     channel = []
     frequency = []
     intensity = []
+    database = []
     has_header = True #assume the file does have a header
     #open file and go line by line: 
+    counter = 0
     for line_count,line_value in enumerate(f): 
+
         #looking at each line in the file and deciding what kind of line it is
 
         #if it doesn't have a header or titles at all:
         if (line_count == 0) and not line_value.startswith("#"):#basically, see if this file doesn't have a header
             has_header = False # signify that file does not have a header
-            dictionary_per_file,column_names = ReadFileLine_NoHeader(dictionary_per_file,filepath)
+            formatted_RFI_file,column_names = ReadFileLine_NoHeader(formatted_RFI_file,filepath)
 
         #if it's a useless line: 
-        elif line_value == "################ HEADER #################\n" or line_value == "################   Data  ################\n": #ignoring lines that are just header and data indicators - they give us no information
+        elif line_value == "################ HEADER #################\n" or line_value == "################   Data  ################\n" or line_value == '\n': #ignoring lines that are just header and data indicators - they give us no information
             continue
 
 
         #if it's a header value such as "date: 01-24-1995"
         elif line_value.startswith("#")==True and (":" in line_value) == True:
-            dictionary_per_file = ReadFileLine_HeaderValue(dictionary_per_file, line_value,filepath)
+            formatted_RFI_file = ReadFileLine_HeaderValue(formatted_RFI_file, line_value,filepath)
 
         #if it's a column title indicating the names of each column
         elif line_value.startswith("#")==True and (":" in line_value) == False: 
             column_names = list(filter(None,((line_value.strip('#').strip('\n')).split(" "))))#creating a list of all the column names
                 
-        #if not all other cases then this line must just be the values given in the columns        
+        #if not all other cases then this line must just be the values given in the columns   
+        #    
         else:
             new_line = list(filter(None,((line_value.strip('\n')).split(" "))))#create a list of all the column values
-            window,channel,frequency,intensity,column_names = ReadFileLine_ColumnValues(has_header,new_line,column_names,window,channel,frequency,intensity,filepath)
+            window_value,channel_value,frequency_value,intensity_value,overlapping = ReadFileLine_ColumnValues(has_header,new_line,column_names,filepath)
+            if overlapping: 
+                continue
+            try:
+                #print(counter)
+                validated_frequency = FrequencyVerification(frequency_value,formatted_RFI_file)
+                database.append('RFI_3')
+                database_value = 'RFI_3'
+                counter += 1
+                
+            except FreqOutsideRcvrBoundsError:
+                database.append('RFI_dirty')
+                database_value = 'RFI_dirty'
+                #print(database[-1])
+                #print(counter)
+                validated_frequency = frequency_value
+                #database_to_put = 'RFI_dirty'
+            data_line = [window_value, channel_value, validated_frequency,intensity_value,database_value]
+            data.append(data_line)
+            window.append(window_value)
+            channel.append(channel_value)
+            frequency.append(validated_frequency)
+            intensity.append(intensity_value)
+            data.append(data_line)
+
             if intensity[-1] == "NaN":#getting rid of bogus values
                 del window[-1]
                 del channel[-1]
@@ -83,19 +121,72 @@ def read_file(filepath):#use this function to read in a particular file and retu
                 #print(frequency)
                 #exit()
     
-    window_dictionary = {"Window":window}#update dictionary with a list for each column value
-    channel_dictionary = {"Channel": channel}    
-    frequency_dictionary = { "Frequency (MHz)": frequency}    
-    intensity_dictionary = { "Intensity (Jy)" : intensity}
+    #window_dictionary = {"Window":window}#update dictionary with a list for each column value
+    #channel_dictionary = {"Channel": channel}    
+    #frequency_dictionary = { "Frequency (MHz)": frequency}    
+    #intensity_dictionary = { "Intensity (Jy)" : intensity}
+    #database_dictionary = { "database" : database}
     #update the file dictionary:
-    dictionary_per_file.update(window_dictionary)
-    dictionary_per_file.update(channel_dictionary)
-    dictionary_per_file.update(frequency_dictionary)
-    dictionary_per_file.update(intensity_dictionary)#keep in mind this means that there may be empty dictionaries being added if this file doesn't contain a certain column value
-    return(dictionary_per_file)#return that dictionary for this particular file we are looking at
+    
+    formatted_RFI_file["Window"] = window
+    formatted_RFI_file["Channel"] = channel
+    formatted_RFI_file["Intensity (Jy)"] = intensity
+    formatted_RFI_file["Frequency (MHz)"] = frequency
+    formatted_RFI_file["Database"] = database
+    formatted_RFI_file["Data"] = data
+    #keep in mind this means that there may be empty lists being added if this file doesn't contain a certain column value
+    return(formatted_RFI_file)#return that dictionary for this particular file we are looking at
 
 
 #---subsection: These are all functions used by read_file()---#
+
+
+def FrequencyVerification(frequency_value,header_information):
+    """
+    Identifies issues in the frequency value in RFI-data
+    1.) Checks for units (MHz vs GHz)
+    2.) Checks that the frequency is in the appropriate range for the given receiver, under the assumption that
+    they were generated by the understood receivers prior to 2019
+    
+    :param frequency_value: the frequency value to verify
+    :param header_information: the dictionary made with header information for each file 
+    :returns validated_frequency: the validated frequency value
+    """
+
+    if float(frequency_value) < 245.0: # Converting all GHz values to MHz
+        validated_frequency = str(float(frequency_value) * 1000.0)
+    else:
+        validated_frequency = frequency_value
+
+    """
+    frontend_aliases = {
+        'P1': 'Prime Focus 1',
+        'RcvrPF_1': 'Prime Focus 1'
+    }
+
+    GBT_receiver_ranges = { 
+        'Prime Focus 1': {'freq_min': 290.0, 'freq_max': 920.0},
+        'Rcvr_342': {'freq_min': 290.0, 'freq_max': 395.0},
+        'Rcvr_450': {'freq_min': 385.0, 'freq_max': 520.0}
+    }
+    """
+
+    frontend_shorthand = header_information["frontend"]
+ #   try:
+    frontend_name = GBT_receiver_specs.frontend_aliases[frontend_shorthand]
+ #   except:
+ #       frontend_name = 'Unknown'
+    freq_min = GBT_receiver_specs.GBT_receiver_ranges[frontend_name]['freq_min']
+    freq_max = GBT_receiver_specs.GBT_receiver_ranges[frontend_name]['freq_max']
+    buffer_factor = .1
+    freq_buffer = (freq_max - freq_min)* buffer_factor
+    if GBT_receiver_specs.GBT_receiver_ranges[frontend_name] == "Unknown": 
+        freq_buffer = 0
+    if float(validated_frequency) < (freq_min - freq_buffer) or float(validated_frequency) > (freq_max + freq_buffer):
+        raise FreqOutsideRcvrBoundsError
+    #if str(validated_frequency) == "1.788023":
+    #    print(validated_frequency)
+    return validated_frequency
 
 def ReadFileLine_NoHeader(dictionary_per_file,filepath):
     #Gleaning information from a file that does not contain a file header for information
@@ -162,136 +253,95 @@ def ReadFileLine_HeaderValue(dictionary_per_file, line_value,filepath):
     return dictionary_per_file
 
 def CheckFor_OverlappingColumns(line_value):
+    overlapping = False
+    column_count = 0
     for column_count,column_value in enumerate(line_value): 
         if column_value.count(".") == 2:
-            overlapping = "True"
+            overlapping = True
             break
-        else:
-            overlapping = "False"
     return overlapping,column_count
 
-def DealWith_Overlapping(column_count,line_value,window,channel,frequency,intensity):#NOTE: this happened only with one type of column set for me, needs to be modified to be workable with all column sets
+def DealWith_Overlapping(column_count,line_value):#NOTE: this happened only with one type of column set for me, needs to be modified to be workable with all column sets
         #This function deals with overlapping columns, when one column value bleeds into another. I.E. your frequency/intensity column is 400.1000.00 meaning a frequency of 400 and a intensity of 1000.0
 
-        split_value = int(input("Please input the character number at which the columns need to be split, counting from the left (default is 8): \n") or "8")
+        #split_value = int(input("Please input the character number at which the columns need to be split, counting from the left (default is 8): \n") or "8")
+        split_value = 8
+
 
         if column_count == 0:
-            window.append(line_value[0][0:split_value])
-            channel.append(line_value[0][split_value:])
-            frequency.append(line_value[1])
-            intensity.append(line_value[2])
+            window_value = (line_value[0][0:split_value])
+            channel_value = (line_value[0][split_value:])
+            frequency_value = (line_value[1])
+            intensity_value = (line_value[2])
         elif column_count == 1: 
-            window.append(line_value[0])
-            channel.append(line_value[1][0:split_value])
-            frequency.append(line_value[1][split_value:])
-            intensity.append(line_value[2])    
+            window_value = (line_value[0])
+            channel_value = (line_value[1][0:split_value])
+            frequency_value = (line_value[1][split_value:])
+            intensity_value = (line_value[2])    
         elif column_count ==2: 
-            window.append(line_value[0])
-            channel.append(line_value[1])
-            frequency.append(line_value[2][0:split_value])
-            intensity.append(line_value[2][split_value:0])
-        return window,channel,frequency,intensity
+            window_value = (line_value[0])
+            channel_value = (line_value[1])
+            frequency_value = (line_value[2][0:split_value])
+            intensity_value = (line_value[2][split_value:0])
+        return window_value,channel_value,frequency_value,intensity_value
     
     
 
-def ReadFileLine_ColumnValues(has_header,line_value,column_names,window,channel,frequency,intensity,filepath):
-    new_column_names = column_names
+def ReadFileLine_ColumnValues(has_header,line_value,column_names,filepath):
     # Unfortunately, we first have to check if the columns overlapped with themselves anywhere, such as the frequency values bleeding into intensity values to make 1471.456800.000 which should be 
     # something like 1471.456 for frequency and 800.000 for intensity or something (these are made up numbers for example only)
     overlapping,column_count = CheckFor_OverlappingColumns(line_value)
-    if overlapping == "True":
+    if overlapping:
         print("There is a file you have input that contains a column which has merged into the other. Here is the line: \n")
         print(line_value)
-        window,channel,frequency,intensity = DealWith_Overlapping(column_count, line_value,window,channel,frequency,intensity)
-        return window,channel,frequency,intensity,new_column_names
+        print("Skipping merged line")
+        window_value,channel_value,frequency_value,intensity_value = DealWith_Overlapping(column_count, line_value)
+        return window_value,channel_value,frequency_value,intensity_value,overlapping
        
     #now that we know this is a correctly made line, we check which format this file is in, is it 4 columns? 3? What are the values in these columns? 
     elif (column_names[0] == "Window" or column_names[0] == "IFWindow") and column_names[1] == "Channel" and (column_names[2] == "Frequency(MHz)" or column_names[2] == "Frequency (MHz)") and column_names[3] == "Intensity(Jy)":#4 regular columns
-        #print(float(line_value[2]))
-        if float(line_value[2])<150.0:
-            frequency.append(str(float(line_value[2])*1000.0)) #Converting to MHz
-            #print(str(float(line_value[2])*1000.0))
-            #input("stop")
-            new_column_names[2] = "Frequency (MHz)"
-            #print(line_value[2])
-            if float(line_value[2])*1000.0 < 150.0:
-                print(line_value[2])
-                input("stop, line 216")
 
-        window.append(line_value[0])
-        channel.append(line_value[1])
-        frequency.append(line_value[2])
-        intensity.append(line_value[3])
+        window_value = (line_value[0])
+        channel_value = (line_value[1])
+        frequency_value = (line_value[2])
+        intensity_value = (line_value[3])
+
+
 
     elif (column_names[0] == "Window" or column_names[0] == "IFWindow") and column_names[1] == "Channel" and (column_names[2] == "Frequency(GHz)" or column_names[2] == "Frequency GHz)") and column_names[3] == "Intensity(Jy)":
-        window.append(line_value[0])
-        channel.append(line_value[1])
-        #print(float(line_value[2]))
-        if float(line_value[2])<150.0:
-            frequency.append(str(float(line_value[2])*1000.0)) #Converting to MHz
-            new_column_names[2] = "Frequency(MHz)"
-            #print(line_value[2])
-            if float(line_value[2])*1000.0 < 150.0:
-                print(line_value[2])
-                input("stop, line 231")
-        else:#Must be mislabeled as GHz
-            frequency.append(line_value[2])
-            new_column_names[2] = "Frequency(MHz)"
-        intensity.append(line_value[3])
+        window_value = (line_value[0])
+        channel_value = (line_value[1])
+        frequency_value = (line_value[2])
+        intensity_value = (line_value[3])
+      
+
 
     elif column_names[0] == "Frequency(MHz)" and column_names[1] == "Intensity(Jy)":#2 regular columns)
-        #print(float(line_value[2]))
-        if float(line_value[0])<150.0:
-            frequency.append(str(float(line_value[0])*1000.0)) #Converting to MHz
-            new_column_names[0] = "Frequency (MHz)"    
-            #print(line_value[0])
-            if float(line_value[0])*1000.0 < 150.0:
-                print(line_value[0]) 
-                input("stop, line 243")   
-        frequency.append(line_value[0])
-        intensity.append(line_value[1])
+        frequency_value = (line_value[0])
+        intensity_value = (line_value[1])
+        window_value = "NaN"
+        channel_value = "NaN"
+ 
 
     elif column_names[0] == "Channel" and column_names[1] == "Frequency(MHz)" or column_names[1] == "Frequency (MHz)" and column_names[2] == "Intensity(Jy)":#3 regular columns
-        if float(line_value[1])<150.0:
-            frequency.append(str(float(line_value[1])*1000.0)) #Converting to MHz
-            new_column_names[1] = "Frequency (MHz)"  
-            #print(line_value[1])  
-            if float(line_value[1])*1000.0 < 150.0:
-                print(line_value[1])  
-                input("stop, line 253")  
-        channel.append(line_value[0])
-        frequency.append(line_value[1])
-        intensity.append(line_value[2])
+        channel_value = (line_value[0])
+        frequency_value = (line_value[1])
+        intensity_value = (line_value[2])
+        window_value = "NaN"
+
+
     elif column_names[0] == "Channel" and column_names[1] == "Frequency(GHz)" and column_names[2] == "Intensity(Jy)":# 3 columns, but the person decided to put the frequency in GHz, so change back to MHz and add
-        if float(line_value[1])<150.0:
-            frequency.append(str(float(line_value[1])*1000.0)) #Converting to MHz
-            new_column_names[1] = "Frequency (MHz)"
-            #print(line_value[1])
-            if float(line_value[1])*1000.0 < 150.0:
-                print(line_value[1])
-                input("stop, line 263")
-        else: 
-            frequency.append(line_value[1])        
-        channel.append(line_value[0])
-        
-        intensity.append(line_value[2])        
+        frequency_value = (line_value[1])        
+        channel_value = (line_value[0])
+        intensity_value = (line_value[2])
+        window_value = "NaN"  
+    
     elif has_header == False:# Finally, if the file does not have a header, it has two columns that are frequency and intensity
-        #print(float(line_value[0]))
-        #print(type((line_value[0])))
-        #input("stop, line 275")
-        #if str(type(line_value[0])) != "<class 'str'>":
-            #print(line_value[0])
-            #input("stop")
-        if float(line_value[0])<150.0:
-            frequency.append(str(float(line_value[0])*1000.0)) #Converting to MHz
-            new_column_names[0] = "Frequency (MHz)"
-            #print(line_value[0])
-            #print("STOP")
-            if (float(line_value[0])*1000.0) < 150.0:
-                print(line_value[0])   
-                input("stop, line 275")     
-        frequency.append(line_value[0])
-        intensity.append(line_value[1])    
+        frequency_value = (line_value[0])
+        intensity_value = (line_value[1])    
+        window_value = "NaN"
+        channel_value = "NaN"
+
     else:    
         print("there is a problem. The file reader could not parse this file. Please look at the file format and try again.")
         print("this is the filepath:\n")
@@ -301,8 +351,9 @@ def ReadFileLine_ColumnValues(has_header,line_value,column_names,window,channel,
         print("this is the line in the file that this file parser broke on:\n")
         print(line_value)                
         input()#this is just to make the code stop
+
     
-    return(window,channel,frequency,intensity,new_column_names)
+    return(window_value,channel_value,frequency_value,intensity_value,overlapping)
 
 
 def None_string(value,value_len):
@@ -317,144 +368,68 @@ def None_string(value,value_len):
 ################################################################################################################################################################################################################################
 
 
-path = '/home/www.gb.nrao.edu/content/IPG/rfiarchive_files/GBTDataImages'
-#path = '/users/jskipper/Documents/scripts/2017_deleted'
-list_o_paths = []
-list_o_structs = []
+def main():
+    path = '/home/www.gb.nrao.edu/content/IPG/rfiarchive_files/GBTDataImages'
+    #path = '/users/jskipper/Documents/scripts/RFI/problem_files/single_line_test/'
+    list_o_paths = []
+    list_o_structs = []
 
-# making a list of all of the .txt files in the directory so I can just cycle through each full path:
-for filename in os.listdir(path):
-    if filename.endswith(".txt") and filename != "URLs.txt":# If the files are ones we are actually interested in
-        list_o_paths.append(os.path.join(path,filename))
-        continue
-
-
-#going thru each file one by one
-for i in list_o_paths:
-    print("reading "+str(i)+"...")
-    dictionary = read_file(i)
-    list_o_structs.append(dictionary)#creating a structure of dictionaries with header info for each file, and lists of the values
-
-
-
-
-
-
-
-username = input("Please enter SQL database username... ")
-password = input("Please enter SQL database password... ")
-cnx = mysql.connector.connect(user=username, password=password,
-                              host='192.33.116.22',
-                              database='jskipper')
-cursor = cnx.cursor()
-
-
-
-"""
-for count,SQL_dict in enumerate(list_o_structs): 
-    if count%10 == 0:
-        f = open('data_for_SQL'+str(count)+'.csv','w')
-        print "starting to write data to file number "+str(count)+"...\n"
-        #keys = []
-        for key0, value0 in SQL_dict.iteritems():
-            if key0 != "elevation (deg)": 
-                f.write("\""+str(key0)+"\",")
-            else:
-                f.write("\""+str(key0)+"\"")
-        f.write("\n")
-#    if count == 0:
-#        test = open('title_for_SQL.txt','w')
-#        for key0, value0 in SQL_dict.iteritems():
-#            test.write(str(key0)+",")
-#        test.write("\n")
-    for key,value in SQL_dict.iteritems():
-        if str(type(value)) == "<type \'list\'>":
-            for fnum,fval in enumerate(value):
-                for key2,value2 in SQL_dict.iteritems():
-                    if (str(type(value2)) == "<type \'list\'>"):
-                        f.write("\""+str(value2[fnum])+"\",")
-                    elif key2 != "elevation (deg)": 
-                        f.write("\""+str(value2)+"\",")
-                     else:
-                        f.write("\""+str(value2)+"\"")
-                f.write("\n")
+    # making a list of all of the .txt files in the directory so I can just cycle through each full path:
+    for filename in os.listdir(path):
+        if filename.endswith(".txt") and filename != "URLs.txt":# If the files are ones we are actually interested in
+            list_o_paths.append(os.path.join(path,filename))
             continue
-    if count == 0:
-        break
-    
-    print "file "+str(count)+" written \n"
 
 
-"""
+    username = input("Please enter SQL database username: ")
+
+    password = getpass.getpass("Please enter the password: ",stream=None)
+
+    cnx = mysql.connector.connect(user=username, password=password,
+                                host='192.33.116.22',
+                                database='jskipper')
+    cursor = cnx.cursor()
 
 
+    #going thru each file one by one
+    for filenum,filepath in enumerate(list_o_paths):
+        if filenum < 895: 
+            continue
+        print("Extracting file "+str(filenum+1)+" of "+str(len(list_o_paths))+", filename: "+str(filepath))
+        formatted_RFI_file = read_file(filepath)
+        def check_data_lengths(formatted_RFI_file): 
+            data_lengths = {
+                'Frequency length': len(formatted_RFI_file.get("Frequency (MHz)")),
+                'Window length': len(formatted_RFI_file.get("Window")),
+                'Channel length': len(formatted_RFI_file.get("Channel")),
+                'Intensity length': len(formatted_RFI_file.get("Intensity (Jy)"))
+            }
+            if len(set(data_lengths.values())) != 1:
+                print("Could not extract: Frequency, Intensity, Channel, and Window fields are not one to one. Check your data")
+                print(data_lengths)
+                exit()
+        check_data_lengths(formatted_RFI_file)
+        
+        for linenum in range(len(formatted_RFI_file.get("Frequency (MHz)"))):#for each value in that multi-valued set
+            #if str(formatted_RFI_file.get("Frequency (MHz)")[linenum]) == "1.788023":
+                #print(str(formatted_RFI_file.get("Database")[linenum]))
+                #print(formatted_RFI_file.get("Data"))
+            add_values = "INSERT INTO "+str(formatted_RFI_file.get("Data")[linenum][4])+" (feed,frontend,azimuth,projid,frequency_resolution,Window,exposure,utc,date,number_IF_Windows,Channel,backend,mjd,Frequency,lst,filename,polarization,source,tsys,frequency_type,units,Intensity,scan_number,elevation) VALUES (\""+str(formatted_RFI_file.get("feed"))+"\",\""+str(formatted_RFI_file.get("frontend"))+"\",\""+str(formatted_RFI_file.get("azimuth (deg)"))+"\",\""+str(formatted_RFI_file.get("projid"))+"\",\""+str(formatted_RFI_file.get("frequency_resolution"))+"\",\""+str(formatted_RFI_file.get("Data")[linenum][0])+"\",\""+str(formatted_RFI_file.get("exposure (sec)"))+"\",\""+str(formatted_RFI_file.get("utc (hrs)"))+"\",\""+str(formatted_RFI_file.get("date"))+"\",\""+str(formatted_RFI_file.get("number_IF_Windows"))+"\",\""+str(formatted_RFI_file.get("Data")[linenum][1])+"\",\""+str(formatted_RFI_file.get("backend"))+"\",\""+str(formatted_RFI_file.get("mjd"))+"\",\""+str(formatted_RFI_file.get("Data")[linenum][2])+"\",\""+str(formatted_RFI_file.get("lst (hrs)"))+"\",\""+str(formatted_RFI_file.get("filename"))+"\",\""+str(formatted_RFI_file.get("polarization"))+"\",\""+str(formatted_RFI_file.get("source"))+"\",\""+str(formatted_RFI_file.get("tsys"))+"\",\""+str(formatted_RFI_file.get("frequency_type"))+"\",\""+str(formatted_RFI_file.get("units"))+"\",\""+str(formatted_RFI_file.get("Data")[linenum][3])+"\",\""+str(formatted_RFI_file.get("scan_number"))+"\",\""+str(formatted_RFI_file.get("elevation (deg)"))+"\");"
+            cursor.execute(add_values)
+
+        
 
 
-for count,SQL_dict in enumerate(list_o_structs): #iterating through each dictionary one by one
-    print("starting to write data to file number "+str(count)+"...\n")
-    #keys = []
-    for key,value in SQL_dict.items():#iterating through each field in that dictionary
-        #print(key)
-        #print(value[0:10])
-        #print(str(type(value)))
-        if str(type(value)) == "<class \'list\'>":#if that field is multi-valued
-            for fnum,fval in enumerate(value):#for each value in that multi-valued set
-        #        keys = []
-               # for key0,value0 in SQL_dict.items():
-               #     SQL_dict.update({key0:None_string(SQL_dict.get(key0),len(value))})
+    cnx.close()
 
-
-        #             else:
-        #                keys.append("\""+str(value2)+"\"")
-                #this is each time we should add
-                #print("printing values...")
-                #print(SQL_dict)
-                #print(SQL_dict.get("feed"))
-                #print(SQL_dict.get("frontend"))
-                #print(SQL_dict.get("azimuth (deg)"))
-                #print(SQL_dict.get("projid"))
-                #print(SQL_dict.get("frequency_resolution"))
-                #print(SQL_dict.get("Window")[0:10])
-                #print(SQL_dict.get("exposure (sec)"))
-                #print(SQL_dict.get("utc (hrs)"))
-                #print(SQL_dict.get("date"))
-                #print(SQL_dict.get("number_IF_Windows"))
-                #print(SQL_dict.get("channel")[0:10])
-                #print(SQL_dict.get("backend"))
-                #print(SQL_dict.get("mjd"))
-                #print(SQL_dict.get("Frequency (MHz)")[0:10])
-                #print(SQL_dict.get("lst (hrs)"))
-                #print(SQL_dict.get("filename"))
-                #print(SQL_dict.get("polarization"))
-                #print(SQL_dict.get("source"))
-                #print(SQL_dict.get("tsys"))
-                #print(SQL_dict.get("frequency_type"))
-                #print(SQL_dict.get("units"))
-                #print(SQL_dict.get("Intensity (Jy)")[0:10])
-                #print(SQL_dict.get("scan_number"))
-                #print(SQL_dict.get("elevation (deg)"))
-                
-
-
-                add_values = "INSERT INTO RFI_3 (feed,frontend,azimuth,projid,frequency_resolution,Window,exposure,utc,date,number_IF_Windows,Channel,backend,mjd,Frequency,lst,filename,polarization,source,tsys,frequency_type,units,Intensity,scan_number,elevation) VALUES (\""+str(SQL_dict.get("feed"))+"\",\""+str(SQL_dict.get("frontend"))+"\",\""+str(SQL_dict.get("azimuth (deg)"))+"\",\""+str(SQL_dict.get("projid"))+"\",\""+str(SQL_dict.get("frequency_resolution"))+"\",\""+str(SQL_dict.get("Window")[fnum])+"\",\""+str(SQL_dict.get("exposure (sec)"))+"\",\""+str(SQL_dict.get("utc (hrs)"))+"\",\""+str(SQL_dict.get("date"))+"\",\""+str(SQL_dict.get("number_IF_Windows"))+"\",\""+str(SQL_dict.get("Channel")[fnum])+"\",\""+str(SQL_dict.get("backend"))+"\",\""+str(SQL_dict.get("mjd"))+"\",\""+str(SQL_dict.get("Frequency (MHz)")[fnum])+"\",\""+str(SQL_dict.get("lst (hrs)"))+"\",\""+str(SQL_dict.get("filename"))+"\",\""+str(SQL_dict.get("polarization"))+"\",\""+str(SQL_dict.get("source"))+"\",\""+str(SQL_dict.get("tsys"))+"\",\""+str(SQL_dict.get("frequency_type"))+"\",\""+str(SQL_dict.get("units"))+"\",\""+str(SQL_dict.get("Intensity (Jy)")[fnum])+"\",\""+str(SQL_dict.get("scan_number"))+"\",\""+str(SQL_dict.get("elevation (deg)"))+"\");"
-                cursor.execute(add_values)
-
-            break
-
-    
-
-            
-    #add_values = "INSERT INTO RFI_3 VALUES ("+keys[0]+","+keys[1]+","+keys[2]+","+keys[3]+","+keys[4]+","+keys[5]+","+keys[6]+","+keys[7]+","+keys[8]+","+keys[9]+","+keys[10]+","+keys[11]+","+keys[12]+","+keys[13]+","+keys[14]+","+keys[15]+","+keys[16]+","+keys[17]+","+keys[18]+","+keys[19]+","+keys[20]+","+keys[21]+","+keys[22]+");"
-
-    #cursor.execute(add_values)
-    #if count == 0:
-    #    break
-    print("file "+str(count)+" written out of "+str(len(list_o_structs))+" \n")  
-
-
-cnx.close()
-
-
+if __name__ == "__main__":
+    import ptvsd 
+    # Allow other computers to attach to ptvsd at this IP address and port. 
+    ptvsd.enable_attach(address=('10.16.96.210', 3001), redirect_output=True) 
+    # # Pause the program until a remote debugger is attached 
+    print("Waiting for debugger attach...") 
+    #ptvsd.wait_for_attach()
+    main()
 
 
         
