@@ -92,7 +92,7 @@ def read_file(filepath):#use this function to read in a particular file and retu
                 continue
             try:
                 #print(counter)
-                validated_frequency = FrequencyVerification(frequency_value,formatted_RFI_file)
+                validated_frequency,validated_frontend = FrequencyVerification(frequency_value,formatted_RFI_file)
                 database.append('RFI_3')
                 database_value = 'RFI_3'
                 counter += 1
@@ -129,6 +129,7 @@ def read_file(filepath):#use this function to read in a particular file and retu
     #database_dictionary = { "database" : database}
     #update the file dictionary:
     
+    formatted_RFI_file["frontend"] = validated_frontend
     formatted_RFI_file["Window"] = window
     formatted_RFI_file["Channel"] = channel
     formatted_RFI_file["Intensity (Jy)"] = intensity
@@ -187,7 +188,7 @@ def FrequencyVerification(frequency_value,header_information):
         raise FreqOutsideRcvrBoundsError
     #if str(validated_frequency) == "1.788023":
     #    print(validated_frequency)
-    return validated_frequency
+    return validated_frequency,frontend_name
 
 def ReadFileLine_NoHeader(dictionary_per_file,filepath):
     #Gleaning information from a file that does not contain a file header for information
