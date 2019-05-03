@@ -36,6 +36,7 @@ import mysql.connector
 import getpass
 import GBT_receiver_specs
 import sys
+import fxns_output_process
 
 class FreqOutsideRcvrBoundsError(Exception):
     pass
@@ -390,12 +391,37 @@ def main():
                                 database='jskipper')
     cursor = cnx.cursor()
 
+    print("gathering filename set...")
+    def gather_list(connection_call,query):
+        cursor = connection_call
+        cursor.execute(query)
+
+
+        value_list = []
+
+
+        row = cursor.fetchone() #getting each row
+    
+        while row is not None:
+            value_list.append(row[0])
+            row = cursor.fetchone()
+
+        return(value_list)
+    unique_filename = gather_list(cursor, "SELECT DISTINCT filename FROM RFI_3")
+
 
     #going thru each file one by one
+    print("starting to upload files one by one...")
     for filenum,filepath in enumerate(list_o_paths):
-        if filenum < 895: 
-            continue
         print("Extracting file "+str(filenum+1)+" of "+str(len(list_o_paths))+", filename: "+str(filepath))
+        filename = filepath.split("/")[7]
+        #print(filename)
+        #print(unique_filename[filenum])
+        if filename in unique_filename:
+            print("File already exists in database, moving on to next file.")
+            continue
+        #input("stopping")
+        
         formatted_RFI_file = read_file(filepath)
         def check_data_lengths(formatted_RFI_file): 
             data_lengths = {
