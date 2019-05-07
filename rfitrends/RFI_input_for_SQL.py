@@ -78,6 +78,7 @@ def read_file(filepath):#use this function to read in a particular file and retu
         #if it's a header value such as "date: 01-24-1995"
         elif line_value.startswith("#")==True and (":" in line_value) == True:
             formatted_RFI_file = ReadFileLine_HeaderValue(formatted_RFI_file, line_value,filepath)
+            validated_frontend = formatted_RFI_file.get("frontend")
 
         #if it's a column title indicating the names of each column
         elif line_value.startswith("#")==True and (":" in line_value) == False: 
@@ -103,6 +104,7 @@ def read_file(filepath):#use this function to read in a particular file and retu
                 #print(database[-1])
                 #print(counter)
                 validated_frequency = frequency_value
+                validated_frontend = formatted_RFI_file.get("frontend")
                 #database_to_put = 'RFI_dirty'
             data_line = [window_value, channel_value, validated_frequency,intensity_value,database_value]
             data.append(data_line)
@@ -209,14 +211,14 @@ def ReadFileLine_NoHeader(dictionary_per_file,filepath):
     dictionary_per_file.update({"feed": "NaN"})
     dictionary_per_file.update({"frontend": str(filename[2])})
     dictionary_per_file.update({"projid": "NaN"})
-    dictionary_per_file.update({"frequency_resolution": "NaN"})
+    dictionary_per_file.update({"frequency_resolution (MHz)": "NaN"})
     dictionary_per_file.update({"Window": "NaN"})
     dictionary_per_file.update({"exposure": "NaN"})
     utc_hr = (float(date.strftime("%H")))
     utc_min = (float(date.strftime("%M"))/60.0 )
     utc_sec = (float(date.strftime("%S"))/3600.0)
     utc = utc_hr+utc_min+utc_sec
-    dictionary_per_file.update({"utc": str(utc)})
+    dictionary_per_file.update({"utc (hrs)": utc})
     dictionary_per_file.update({"number_IF_Windows": "NaN"})
     dictionary_per_file.update({"Channel": "NaN"})
     dictionary_per_file.update({"backend": "NaN"})
@@ -225,7 +227,7 @@ def ReadFileLine_NoHeader(dictionary_per_file,filepath):
     utc_formatted = date.strftime('%m%d'+year_formatted+' %H%M')
     LSThh,LSTmm,LSTss = LST_calculator.LST_calculator(utc_formatted)
     LST = LSThh + LSTmm/60.0 + LSTss/3600.0
-    dictionary_per_file.update({"lst": LST})
+    dictionary_per_file.update({"lst (hrs)": LST})
 
     dictionary_per_file.update({"polarization":filename[6]})
     dictionary_per_file.update({"source":"NaN"})
@@ -233,7 +235,6 @@ def ReadFileLine_NoHeader(dictionary_per_file,filepath):
     dictionary_per_file.update({"frequency_type":"NaN"})
     dictionary_per_file.update({"Units":"Jy"})
     dictionary_per_file.update({"scan_number":"NaN"})
-    dictionary_per_file.update({"elevation": float(filename[8][2:])})
 
     
 
@@ -436,13 +437,36 @@ def main():
                 print(data_lengths)
                 exit()
         check_data_lengths(formatted_RFI_file)
-        
-        for linenum in range(len(formatted_RFI_file.get("Frequency (MHz)"))):#for each value in that multi-valued set
-            #if str(formatted_RFI_file.get("Frequency (MHz)")[linenum]) == "1.788023":
-                #print(str(formatted_RFI_file.get("Database")[linenum]))
-                #print(formatted_RFI_file.get("Data"))
-            add_values = "INSERT INTO "+str(formatted_RFI_file.get("Data")[linenum][4])+" (feed,frontend,azimuth,projid,frequency_resolution,Window,exposure,utc,date,number_IF_Windows,Channel,backend,mjd,Frequency,lst,filename,polarization,source,tsys,frequency_type,units,Intensity,scan_number,elevation) VALUES (\""+str(formatted_RFI_file.get("feed"))+"\",\""+str(formatted_RFI_file.get("frontend"))+"\",\""+str(formatted_RFI_file.get("azimuth (deg)"))+"\",\""+str(formatted_RFI_file.get("projid"))+"\",\""+str(formatted_RFI_file.get("frequency_resolution"))+"\",\""+str(formatted_RFI_file.get("Data")[linenum][0])+"\",\""+str(formatted_RFI_file.get("exposure (sec)"))+"\",\""+str(formatted_RFI_file.get("utc (hrs)"))+"\",\""+str(formatted_RFI_file.get("date"))+"\",\""+str(formatted_RFI_file.get("number_IF_Windows"))+"\",\""+str(formatted_RFI_file.get("Data")[linenum][1])+"\",\""+str(formatted_RFI_file.get("backend"))+"\",\""+str(formatted_RFI_file.get("mjd"))+"\",\""+str(formatted_RFI_file.get("Data")[linenum][2])+"\",\""+str(formatted_RFI_file.get("lst (hrs)"))+"\",\""+str(formatted_RFI_file.get("filename"))+"\",\""+str(formatted_RFI_file.get("polarization"))+"\",\""+str(formatted_RFI_file.get("source"))+"\",\""+str(formatted_RFI_file.get("tsys"))+"\",\""+str(formatted_RFI_file.get("frequency_type"))+"\",\""+str(formatted_RFI_file.get("units"))+"\",\""+str(formatted_RFI_file.get("Data")[linenum][3])+"\",\""+str(formatted_RFI_file.get("scan_number"))+"\",\""+str(formatted_RFI_file.get("elevation (deg)"))+"\");"
-            cursor.execute(add_values)
+        with open('/users/jskipper/Documents/scripts/RFI/test_writing_files/test_file_'+filename, 'w') as writer:
+            writer.write("################ HEADER #################\n")
+            writer.write("# projid: "+str(formatted_RFI_file.get("projid"))+"\n")
+            writer.write("# date: "+str(formatted_RFI_file.get("date"))+"\n")
+            writer.write("# utc (hrs): "+str(formatted_RFI_file.get("utc (hrs)"))+"\n")
+            writer.write("# mjd: "+str(formatted_RFI_file.get("mjd"))+"\n")
+            writer.write("# lst (hrs): "+str(formatted_RFI_file.get("lst (hrs)"))+"\n")
+            try: 
+                writer.write("# scan_number: "+str(formatted_RFI_file.get("scan_number"))+"\n")
+            except (TypeError):
+                writer.write("# scan_number: "+str(formatted_RFI_file.get("scan_numbers"))+"\n")
+            writer.write("# frontend: "+str(formatted_RFI_file.get("frontend"))+"\n")
+            writer.write("# feed: "+str(formatted_RFI_file.get("feed"))+"\n")
+            writer.write("# polarization: "+str(formatted_RFI_file.get("polarization"))+"\n")
+            writer.write("# backend: "+str(formatted_RFI_file.get("backend"))+"\n")
+            writer.write("# number_IF_Windows: "+str(formatted_RFI_file.get("number_IF_Windows"))+"\n")
+            writer.write("# exposure (sec): "+str(formatted_RFI_file.get("exposure (sec)"))+"\n")
+            writer.write("# tsys (K): "+str(formatted_RFI_file.get("tsys (K)"))+"\n")
+            writer.write("# frequency_type: "+str(formatted_RFI_file.get("frequency_type"))+"\n")
+            writer.write("# frequency_resolution (MHz): "+str(formatted_RFI_file.get("frequency_resolution (MHz)"))+"\n")
+            writer.write("# source: "+str(formatted_RFI_file.get("source"))+"\n")
+            writer.write("# azimuth (deg): "+str(formatted_RFI_file.get("azimuth (deg)"))+"\n")
+            writer.write("# elevation (deg): "+str(formatted_RFI_file.get("elevation (deg)"))+"\n")
+            writer.write("# units: "+str(formatted_RFI_file.get("units"))+"\n")
+            writer.write("################   Data  ################\n")
+            writer.write("# IFWindow   Channel Frequency(MHz)  Intensity(Jy)\n")
+            for linenum in range(len(formatted_RFI_file.get("Frequency (MHz)"))):#for each value in that multi-valued set
+                writer.write("         "+str(formatted_RFI_file.get("Data")[linenum][0]+"         "+str(formatted_RFI_file.get("Data")[linenum][1]+"         "+str(formatted_RFI_file.get("Data")[linenum][2]+"         "+str(formatted_RFI_file.get("Data")[linenum][3]+"\n")))))
+                add_values = "INSERT INTO "+str(formatted_RFI_file.get("Data")[linenum][4])+" (feed,frontend,`azimuth (deg)`,projid,`resolution (MHz)`,Window,exposure,utc_hrs,date,number_IF_Windows,Channel,backend,mjd,Frequency_MHz,lst,filename,polarization,source,tsys,frequency_type,units,Intensity_Jy,scan_number,`elevation (deg)`) VALUES (\""+str(formatted_RFI_file.get("feed"))+"\",\""+str(formatted_RFI_file.get("frontend"))+"\",\""+str(formatted_RFI_file.get("azimuth (deg)"))+"\",\""+str(formatted_RFI_file.get("projid"))+"\",\""+str(formatted_RFI_file.get("frequency_resolution (MHz)"))+"\",\""+str(formatted_RFI_file.get("Data")[linenum][0])+"\",\""+str(formatted_RFI_file.get("exposure (sec)"))+"\",\""+str(formatted_RFI_file.get("utc (hrs)"))+"\",\""+str(formatted_RFI_file.get("date"))+"\",\""+str(formatted_RFI_file.get("number_IF_Windows"))+"\",\""+str(formatted_RFI_file.get("Data")[linenum][1])+"\",\""+str(formatted_RFI_file.get("backend"))+"\",\""+str(formatted_RFI_file.get("mjd"))+"\",\""+str(formatted_RFI_file.get("Data")[linenum][2])+"\",\""+str(formatted_RFI_file.get("lst (hrs)"))+"\",\""+str(formatted_RFI_file.get("filename"))+"\",\""+str(formatted_RFI_file.get("polarization"))+"\",\""+str(formatted_RFI_file.get("source"))+"\",\""+str(formatted_RFI_file.get("tsys"))+"\",\""+str(formatted_RFI_file.get("frequency_type"))+"\",\""+str(formatted_RFI_file.get("units"))+"\",\""+str(formatted_RFI_file.get("Data")[linenum][3])+"\",\""+str(formatted_RFI_file.get("scan_number"))+"\",\""+str(formatted_RFI_file.get("elevation (deg)"))+"\");"
+                cursor.execute(add_values)
 
         
 
