@@ -46,17 +46,12 @@ class FreqOutsideRcvrBoundsError(Exception):
 #_____________________________________________________________
 ################################################################################################################################################################################################################################
 
-def read_file(filepath):#use this function to read in a particular file and return a dictionary with all header values and lists of the data
-    #database_to_put = 'RFI_3'
+def read_file(filepath,main_database,dirty_database):#use this function to read in a particular file and return a dictionary with all header values and lists of the data
     
     f = open(filepath, 'r') #open file
     formatted_RFI_file = {}
     #these are lists containing column values that will be added to the dictionary later:
     data = [] 
-    window = []
-    channel = []
-    frequency = []
-    intensity = []
     database = []
     has_header = True #assume the file does have a header
     #open file and go line by line: 
@@ -94,51 +89,25 @@ def read_file(filepath):#use this function to read in a particular file and retu
             try:
                 #print(counter)
                 validated_frequency,validated_frontend = FrequencyVerification(frequency_value,formatted_RFI_file)
-                database.append('RFI_3')
-                database_value = 'RFI_3'
+                database.append(main_database)
+                database_value = main_database
                 counter += 1
                 
             except FreqOutsideRcvrBoundsError:
-                database.append('RFI_dirty')
-                database_value = 'RFI_dirty'
+                database.append(dirty_database)
+                database_value = dirty_database
                 #print(database[-1])
                 #print(counter)
                 validated_frequency = frequency_value
                 validated_frontend = formatted_RFI_file.get("frontend")
-                #database_to_put = 'RFI_dirty'
             data_line = [window_value, channel_value, validated_frequency,intensity_value,database_value]
-            data.append(data_line)
-            window.append(window_value)
-            channel.append(channel_value)
-            frequency.append(validated_frequency)
-            intensity.append(intensity_value)
+            if data_line[3] == "NaN":
+                continue
             data.append(data_line)
 
-            if intensity[-1] == "NaN":#getting rid of bogus values
-                del window[-1]
-                del channel[-1]
-                del frequency[-1]
-                del intensity[-1]
-            #freqarray = np.asarray(frequency)
-            #if np.min(freqarray.astype(float)) >= 150.0 == False:
-                #print(frequency)
-                #exit()
-    
-    #window_dictionary = {"Window":window}#update dictionary with a list for each column value
-    #channel_dictionary = {"Channel": channel}    
-    #frequency_dictionary = { "Frequency (MHz)": frequency}    
-    #intensity_dictionary = { "Intensity (Jy)" : intensity}
-    #database_dictionary = { "database" : database}
-    #update the file dictionary:
     
     formatted_RFI_file["frontend"] = validated_frontend
-    formatted_RFI_file["Window"] = window
-    formatted_RFI_file["Channel"] = channel
-    formatted_RFI_file["Intensity (Jy)"] = intensity
-    formatted_RFI_file["Frequency (MHz)"] = frequency
-    formatted_RFI_file["Database"] = database
     formatted_RFI_file["Data"] = data
-    #keep in mind this means that there may be empty lists being added if this file doesn't contain a certain column value
     return(formatted_RFI_file)#return that dictionary for this particular file we are looking at
 
 
@@ -162,24 +131,13 @@ def FrequencyVerification(frequency_value,header_information):
     else:
         validated_frequency = frequency_value
 
-    """
-    frontend_aliases = {
-        'P1': 'Prime Focus 1',
-        'RcvrPF_1': 'Prime Focus 1'
-    }
-
-    GBT_receiver_ranges = { 
-        'Prime Focus 1': {'freq_min': 290.0, 'freq_max': 920.0},
-        'Rcvr_342': {'freq_min': 290.0, 'freq_max': 395.0},
-        'Rcvr_450': {'freq_min': 385.0, 'freq_max': 520.0}
-    }
-    """
 
     frontend_shorthand = header_information["frontend"]
- #   try:
-    frontend_name = GBT_receiver_specs.frontend_aliases[frontend_shorthand]
- #   except:
- #       frontend_name = 'Unknown'
+    try:
+        frontend_name = GBT_receiver_specs.frontend_aliases[frontend_shorthand]
+    except KeyError: #Anything not in the spec list will be labeled as "UnKnown"
+        print("Frontend \""+str(frontend_shorthand)+"\" not recognized as one from our known list of receivers. If you know the corresponding receiver, please add it to the file GBT_receiver_specs.py for future use. The frontend will be set to \"Unknown\" for now.")
+        frontend_name = 'Unknown'
     freq_min = GBT_receiver_specs.GBT_receiver_ranges[frontend_name]['freq_min']
     freq_max = GBT_receiver_specs.GBT_receiver_ranges[frontend_name]['freq_max']
     buffer_factor = .1
@@ -372,6 +330,10 @@ def None_string(value,value_len):
 
 
 def main():
+    main_database = sys.argv[1]
+    dirty_database = sys.argv[2]
+    #print(main_database)
+    #print(dirty_database)
     path = '/home/www.gb.nrao.edu/content/IPG/rfiarchive_files/GBTDataImages'
     #path = '/users/jskipper/Documents/scripts/RFI/problem_files/single_line_test/'
     list_o_paths = []
@@ -409,7 +371,7 @@ def main():
             row = cursor.fetchone()
 
         return(value_list)
-    unique_filename = gather_list(cursor, "SELECT DISTINCT filename FROM RFI_3")
+    unique_filename = gather_list(cursor, "SELECT DISTINCT filename FROM "+main_database)
 
 
     #going thru each file one by one
@@ -424,13 +386,14 @@ def main():
             continue
         #input("stopping")
         
-        formatted_RFI_file = read_file(filepath)
+        formatted_RFI_file = read_file(filepath,main_database,dirty_database)
+
         def check_data_lengths(formatted_RFI_file): 
             data_lengths = {
-                'Frequency length': len(formatted_RFI_file.get("Frequency (MHz)")),
-                'Window length': len(formatted_RFI_file.get("Window")),
-                'Channel length': len(formatted_RFI_file.get("Channel")),
-                'Intensity length': len(formatted_RFI_file.get("Intensity (Jy)"))
+                'Window length': len(formatted_RFI_file.get("Data")[0]),
+                'Channel length': len(formatted_RFI_file.get("Data")[1]),
+                'Frequency length': len(formatted_RFI_file.get("Data")[2]),
+                'Intensity length': len(formatted_RFI_file.get("Data")[3])
             }
             if len(set(data_lengths.values())) != 1:
                 print("Could not extract: Frequency, Intensity, Channel, and Window fields are not one to one. Check your data")
@@ -463,7 +426,7 @@ def main():
             writer.write("# units: "+str(formatted_RFI_file.get("units"))+"\n")
             writer.write("################   Data  ################\n")
             writer.write("# IFWindow   Channel Frequency(MHz)  Intensity(Jy)\n")
-            for linenum in range(len(formatted_RFI_file.get("Frequency (MHz)"))):#for each value in that multi-valued set
+            for linenum in range(len(formatted_RFI_file.get("Data")[0])):#for each value in that multi-valued set
                 writer.write("         "+str(formatted_RFI_file.get("Data")[linenum][0]+"         "+str(formatted_RFI_file.get("Data")[linenum][1]+"         "+str(formatted_RFI_file.get("Data")[linenum][2]+"         "+str(formatted_RFI_file.get("Data")[linenum][3]+"\n")))))
                 add_values = "INSERT INTO "+str(formatted_RFI_file.get("Data")[linenum][4])+" (feed,frontend,`azimuth (deg)`,projid,`resolution (MHz)`,Window,exposure,utc_hrs,date,number_IF_Windows,Channel,backend,mjd,Frequency_MHz,lst,filename,polarization,source,tsys,frequency_type,units,Intensity_Jy,scan_number,`elevation (deg)`) VALUES (\""+str(formatted_RFI_file.get("feed"))+"\",\""+str(formatted_RFI_file.get("frontend"))+"\",\""+str(formatted_RFI_file.get("azimuth (deg)"))+"\",\""+str(formatted_RFI_file.get("projid"))+"\",\""+str(formatted_RFI_file.get("frequency_resolution (MHz)"))+"\",\""+str(formatted_RFI_file.get("Data")[linenum][0])+"\",\""+str(formatted_RFI_file.get("exposure (sec)"))+"\",\""+str(formatted_RFI_file.get("utc (hrs)"))+"\",\""+str(formatted_RFI_file.get("date"))+"\",\""+str(formatted_RFI_file.get("number_IF_Windows"))+"\",\""+str(formatted_RFI_file.get("Data")[linenum][1])+"\",\""+str(formatted_RFI_file.get("backend"))+"\",\""+str(formatted_RFI_file.get("mjd"))+"\",\""+str(formatted_RFI_file.get("Data")[linenum][2])+"\",\""+str(formatted_RFI_file.get("lst (hrs)"))+"\",\""+str(formatted_RFI_file.get("filename"))+"\",\""+str(formatted_RFI_file.get("polarization"))+"\",\""+str(formatted_RFI_file.get("source"))+"\",\""+str(formatted_RFI_file.get("tsys"))+"\",\""+str(formatted_RFI_file.get("frequency_type"))+"\",\""+str(formatted_RFI_file.get("units"))+"\",\""+str(formatted_RFI_file.get("Data")[linenum][3])+"\",\""+str(formatted_RFI_file.get("scan_number"))+"\",\""+str(formatted_RFI_file.get("elevation (deg)"))+"\");"
                 cursor.execute(add_values)
