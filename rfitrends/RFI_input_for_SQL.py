@@ -47,7 +47,15 @@ class FreqOutsideRcvrBoundsError(Exception):
 ################################################################################################################################################################################################################################
 
 def read_file(filepath,main_database,dirty_database):#use this function to read in a particular file and return a dictionary with all header values and lists of the data
-    
+    """
+    Goes through each file, line by line, processes and cleans the data, then loads it into a dictionary with a marker for the corresponding database
+    to which it belongs. 
+
+    param main_database: the primary database to which the person wants their clean data to go
+    param dirty_database: the secondary database to which the person wans their "dirty," or nonsensical data to go
+    returns formatted_RFI_file: The dictionary with all of the data formatted and organized. 
+
+    """
     f = open(filepath, 'r') #open file
     formatted_RFI_file = {}
     #these are lists containing column values that will be added to the dictionary later:
@@ -63,7 +71,7 @@ def read_file(filepath,main_database,dirty_database):#use this function to read 
         #if it doesn't have a header or titles at all:
         if (line_count == 0) and not line_value.startswith("#"):#basically, see if this file doesn't have a header
             has_header = False # signify that file does not have a header
-            formatted_RFI_file,column_names = ReadFileLine_NoHeader(formatted_RFI_file,filepath)
+            formatted_RFI_file,column_names = get_header_info(formatted_RFI_file,filepath)
 
         #if it's a useless line: 
         elif line_value == "################ HEADER #################\n" or line_value == "################   Data  ################\n" or line_value == '\n': #ignoring lines that are just header and data indicators - they give us no information
@@ -150,7 +158,16 @@ def FrequencyVerification(frequency_value,header_information):
     #    print(validated_frequency)
     return validated_frequency,frontend_name
 
-def ReadFileLine_NoHeader(dictionary_per_file,filepath):
+def get_header_info(dictionary_per_file,filepath):
+    """
+    Gleans as much information that would normally be in a header from a file that has been determined by the read_file function to not have a header 
+    and populates it into that file's dictionary.
+
+    param dictionary_per_file: The current dictionary being populated for that file
+    param filepath: The path to that particular file
+
+    returns dictionary per file, column_names: the names of the columns in that file
+    """
     #Gleaning information from a file that does not contain a file header for information
     filename = (filepath.split("/")[-1])# splitting filepath back down to just the filename    
     dictionary_per_file.update({"filename": filename})
@@ -194,13 +211,21 @@ def ReadFileLine_NoHeader(dictionary_per_file,filepath):
     dictionary_per_file.update({"Units":"Jy"})
     dictionary_per_file.update({"scan_number":"NaN"})
 
-    
-
     column_names = ["Frequency (MHz)","Intensity (Jy)"] # we can't glean the column names from the header either, but we know what they are
 
     return(dictionary_per_file,column_names)
 
 def ReadFileLine_HeaderValue(dictionary_per_file, line_value,filepath):
+    """
+    Reads the current line, which has been determined by read_file to be a line with header information. Gleans that header information and loads it 
+    into the file's dictionary. 
+    
+    param dictionary_per_file: The current dictionary being populated for that file
+    param line_value: The current line of the file in a raw unaltered string
+    param filepath: The path to that particular file
+
+    returns dictionary_per_file: The current dictionary being populated for that file, edited to now include that line's header information.
+    """
     filename = (filepath.split("/")[-1])# splitting filepath back down to just the filename    
     dictionary_per_file.update({"filename": filename})
     #Reading the line of a file that is a part of a header
@@ -214,6 +239,15 @@ def ReadFileLine_HeaderValue(dictionary_per_file, line_value,filepath):
     return dictionary_per_file
 
 def CheckFor_OverlappingColumns(line_value):
+    """
+    Checks for overlapping columns in a particular line of a file. 
+
+    param line_value: The current line of the file in a raw unaltered string
+
+    returns overlapping: Boolean to determine if there are overlapping columns in a particular line of file
+    returns column_count: the number of columns in the file
+
+    """
     overlapping = False
     column_count = 0
     for column_count,column_value in enumerate(line_value): 
@@ -222,8 +256,20 @@ def CheckFor_OverlappingColumns(line_value):
             break
     return overlapping,column_count
 
-def DealWith_Overlapping(column_count,line_value):#NOTE: this happened only with one type of column set for me, needs to be modified to be workable with all column sets
-        #This function deals with overlapping columns, when one column value bleeds into another. I.E. your frequency/intensity column is 400.1000.00 meaning a frequency of 400 and a intensity of 1000.0
+def DealWith_Overlapping(column_count,line_value):
+        """
+        when one column value bleeds into another. I.E. your frequency/intensity column is 400.1000.00 meaning a frequency of 400 and a intensity of 1000.0
+        Fixes value based on input from user
+
+        param column_count: number of columns in this particular file
+        param line_value: the string representing the particular line on which there is overlapping
+
+        returns window_value: the value for the "window" column for this line
+        returns channel_value: the value for the "channel" column for this line
+        returns frequency_value: the value for the "frequency" column for this line
+        returns intensity_value: the value for the "intensity" column for this line
+
+        """
 
         #split_value = int(input("Please input the character number at which the columns need to be split, counting from the left (default is 8): \n") or "8")
         split_value = 8
@@ -249,6 +295,21 @@ def DealWith_Overlapping(column_count,line_value):#NOTE: this happened only with
     
 
 def ReadFileLine_ColumnValues(has_header,line_value,column_names,filepath):
+    """
+    Reads one line in a file that has been determined by the read_file function to be a row with data as opposed to header information
+    param has_header: boolean determining if the file has a header or not
+    param line_value: the string containing the information for the particular line of this file 
+    param column_names: the names of the columns contained in this file
+    param filepath: the path to this particular file
+
+
+    returns window_value: the value for the "window" column for this line
+    returns channel_value: the value for the "channel" column for this line
+    returns frequency_value: the value for the "frequency" column for this line
+    returns intensity_value: the value for the "intensity" column for this line
+    returns overlapping: a boolean determining if this particular line contains column overlapping
+
+    """
     # Unfortunately, we first have to check if the columns overlapped with themselves anywhere, such as the frequency values bleeding into intensity values to make 1471.456800.000 which should be 
     # something like 1471.456 for frequency and 800.000 for intensity or something (these are made up numbers for example only)
     overlapping,column_count = CheckFor_OverlappingColumns(line_value)
@@ -316,13 +377,6 @@ def ReadFileLine_ColumnValues(has_header,line_value,column_names,filepath):
     
     return(window_value,channel_value,frequency_value,intensity_value,overlapping)
 
-
-def None_string(value,value_len):
-    if value == None: 
-        value = "None"
-    elif value == []:
-        value = np.zeros(value_len)
-    return value
 
 # Section 5: Code!
 ###____________________start of actual code (not functions)_____________________###
