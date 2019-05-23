@@ -20,6 +20,10 @@ import fxns_output_process
 
 
 def calculate_avgs_load_into_database():
+    """
+    Takes data from the main SQL database table, calculates the averages of that main table, 
+    and then creates an averaged table and loads it back into the SQL database
+    """
 
     table_to_read = "Ryans_RFI_table_expanded_f_i_sorted.txt"
     table_to_make = "RFI_Avgs_expanded"
