@@ -2,6 +2,7 @@ print("Importing packages...")
 import pymysql
 import numpy as np
 import matplotlib.pyplot as plt
+import fxns_output_process
 
 print("starting script...")
 
@@ -16,29 +17,11 @@ cnx = pymysql.connect(user=username, password=password,
 cursor = cnx.cursor()
 query = (" SELECT Frequency FROM Ryans_RFI_table; ")
 
-def gather_list(connection_call,query):
-    cursor = connection_call
-    cursor.execute(query)
-
-
-    value_list = []
-
-
-    row = cursor.fetchone() #getting each row
- 
-    while row is not None:
-        #print(row)
-        row = cursor.fetchone()
-        try:
-            value_list.append(float(row[0]))
-        except: continue
-
-    return(value_list)
 
 print("fetching data...")
 
 
-frequency = gather_list(cursor,query)
+frequency = fxns_output_process.gather_list(cursor,query)
 print(max(frequency))
 print(min(frequency))
 
