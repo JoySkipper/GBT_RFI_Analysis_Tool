@@ -57,4 +57,4 @@ def connect_to_database():
     #cnx is connecting to the sql database
     cursor = cnx.cursor()
 
-    return(cursor)
+    return(cursor,cnx)
