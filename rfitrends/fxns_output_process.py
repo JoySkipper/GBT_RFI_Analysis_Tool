@@ -13,8 +13,6 @@
 
 
 print("importing values for fxn output process")
-#import random
-#import csv
 
 
 def gather_list(connection_call,query):
