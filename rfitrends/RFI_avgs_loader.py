@@ -15,7 +15,7 @@ import csv
 import numpy as np
 import pymysql
 import math
-#import fxns_output_process
+import fxns_output_process
 
 
 
@@ -24,13 +24,7 @@ def calculate_avgs_load_into_database():
     table_to_read = "Ryans_RFI_table_expanded_f_i_sorted.txt"
     table_to_make = "RFI_Avgs_expanded"
 
-    username = input("Please enter SQL database username... ")
-    password = input("Please enter SQL database password... ")
-    cnx = pymysql.connect(user=username, password=password,
-                                host='192.33.116.22',
-                                database='jskipper')
-    #cnx is connecting to the sql database
-    cursor = cnx.cursor()
+    cursor = fxns_output_process.connect_to_database()
 
 
     with open(table_to_read) as f:

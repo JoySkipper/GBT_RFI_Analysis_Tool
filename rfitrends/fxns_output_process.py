@@ -46,3 +46,15 @@ def isSorted(x, key = lambda x: x):
     checks to see if a python list is sorted
     """
     return all([key(x[i]) <= key(x[i + 1]) for i in range(len(x) - 1)])
+
+
+def connect_to_database():
+    username = input("Please enter SQL database username... ")
+    password = input("Please enter SQL database password... ")
+    cnx = pymysql.connect(user=username, password=password,
+                                host='192.33.116.22',
+                                database='jskipper')
+    #cnx is connecting to the sql database
+    cursor = cnx.cursor()
+
+    return(cursor)
