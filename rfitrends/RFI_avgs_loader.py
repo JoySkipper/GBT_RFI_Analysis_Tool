@@ -24,7 +24,7 @@ def calculate_avgs_load_into_database():
     table_to_read = "Ryans_RFI_table_expanded_f_i_sorted.txt"
     table_to_make = "RFI_Avgs_expanded"
 
-    cursor = fxns_output_process.connect_to_database()
+    cursor,cnx = fxns_output_process.connect_to_database()
 
 
     with open(table_to_read) as f:
