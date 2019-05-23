@@ -58,7 +58,7 @@ for row in result:
 
 print("starting graphs...")
 
-
+# Frequency vs. Intensity Graph of all data for the UWBR, log version. This does not save
 print("Making graph with log y-axis...")
 plt.plot(frequency,max_intensity, color="red",label='max or min')
 plt.plot(frequency,min_intensity, color="red")
