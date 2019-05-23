@@ -1,0 +1,5 @@
+#Ignoring visual studio stuff:
+.vscode/
+
+#Ignoring python compiled code:
+*.pyc
