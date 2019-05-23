@@ -46,6 +46,9 @@ class FreqOutsideRcvrBoundsError(Exception):
 #_____________________________________________________________
 ################################################################################################################################################################################################################################
 
+
+
+
 def read_file(filepath,main_database,dirty_database):#use this function to read in a particular file and return a dictionary with all header values and lists of the data
     """
     Goes through each file, line by line, processes and cleans the data, then loads it into a dictionary with a marker for the corresponding database
@@ -410,22 +413,8 @@ def main():
     cursor = cnx.cursor()
 
     print("gathering filename set...")
-    def gather_list(connection_call,query):
-        cursor = connection_call
-        cursor.execute(query)
 
-
-        value_list = []
-
-
-        row = cursor.fetchone() #getting each row
-    
-        while row is not None:
-            value_list.append(row[0])
-            row = cursor.fetchone()
-
-        return(value_list)
-    unique_filename = gather_list(cursor, "SELECT DISTINCT filename FROM "+main_database)
+    unique_filename = fxns_output_process.gather_list(cursor, "SELECT DISTINCT filename FROM "+main_database)
 
 
     #going thru each file one by one

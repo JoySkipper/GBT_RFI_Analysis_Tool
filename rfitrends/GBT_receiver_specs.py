@@ -1,3 +1,8 @@
+"""
+param frontend_aliases: used as a reference for various names given to our receivers, and changing them to a standardized set of names
+param GBT_receiver_ranges: using the standardized set of receiver names, this contains the range of values for each receiver
+"""
+
 frontend_aliases = {
     'P1': 'Prime Focus 1',
     'RcvrPF_1': 'Prime Focus 1',

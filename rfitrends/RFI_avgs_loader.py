@@ -15,28 +15,11 @@ import csv
 import numpy as np
 import pymysql
 import math
-#from fxns_output_process import gather_list
-
-def gather_list(connection_call,query):
-	cursor = connection_call
-	cursor.execute(query)
+#import fxns_output_process
 
 
-	value_list = []
 
-
-	row = cursor.fetchone() #getting each row
- 
-	while row is not None:
-	#print(row)
-		row = cursor.fetchone()
-		try:
-			value_list.append(float(row[0]))
-		except: continue
-
-	return(value_list)
-
-if __name__ == "__main__":
+def calculate_avgs_load_into_database():
 
     table_to_read = "Ryans_RFI_table_expanded_f_i_sorted.txt"
     table_to_make = "RFI_Avgs_expanded"
@@ -86,14 +69,6 @@ if __name__ == "__main__":
                 #creating SQL table of RFI_Avgs
                 cursor.execute(add_values)
 
-
-
-
-
-
-
-
-            
                 cached_intensity = np.array([])
                 cached_frequency = frequency
                 number_of_repeat_frequencies = 0
@@ -102,6 +77,9 @@ if __name__ == "__main__":
                 number_of_repeat_frequencies += 1
 
 	
+
+if __name__ == "__main__":
+    calculate_avgs_load_into_database
 
 
 
