@@ -19,8 +19,8 @@ import pymysql
 import random
 import csv
 
-print("starting main function of total energy calculator")
-if __name__ == "__main__":
+
+def total_NRG_calc():
     total_intensity = []
     total_frequency = []
     mean_intensity = []
@@ -71,3 +71,6 @@ if __name__ == "__main__":
     #cnx.close()
 
 
+if __name__ == "__main__":
+    print("starting main function of total energy calculator")
+    total_NRG_calc()
