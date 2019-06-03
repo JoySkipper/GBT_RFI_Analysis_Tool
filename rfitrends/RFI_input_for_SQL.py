@@ -10,13 +10,6 @@
 ###_________________________________________________________###
 ################################################################################################################################################################################################################################
 
-#ISSUES: 
-#Need to reload values into SQL
-#Need to make it possible to add new values without redoing everything
-
-#DONE:
-#2.added mjd to non-headers, need to reload into SQL
-#3. filled non-headers with values so they're not skipped out on when loaded into SQL
 
 
 
