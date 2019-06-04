@@ -10,13 +10,6 @@
 ###_________________________________________________________###
 ################################################################################################################################################################################################################################
 
-#ISSUES: 
-#Need to reload values into SQL
-#Need to make it possible to add new values without redoing everything
-
-#DONE:
-#2.added mjd to non-headers, need to reload into SQL
-#3. filled non-headers with values so they're not skipped out on when loaded into SQL
 
 
 
@@ -391,7 +384,8 @@ def main():
     dirty_database = sys.argv[2]
     #print(main_database)
     #print(dirty_database)
-    path = '/home/www.gb.nrao.edu/content/IPG/rfiarchive_files/GBTDataImages'
+    #path = '/home/www.gb.nrao.edu/content/IPG/rfiarchive_files/GBTDataImages'
+    path = sys.argv[3]
     #path = '/users/jskipper/Documents/scripts/RFI/problem_files/single_line_test/'
     list_o_paths = []
     list_o_structs = []
