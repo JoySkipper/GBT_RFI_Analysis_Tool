@@ -7,6 +7,7 @@ The GBT RFI Analysis tool is meant, at least at the moment, to be run specifical
 other scripts used: 
 GBT_receiver_specs.py, 
 fxns_output_process.py
+LST_calculator.py 
 
 Run as: 
 ```console
@@ -59,6 +60,9 @@ Once these are loaded, you'll need to export this database to a .txt file via ph
 
 ## RFI_avgs_loader.py 
 
+other scripts used:  
+fxns_output_process.py
+
 This script reads a text file that was exported from an SQL database made by RFI_input_for_SQL.py. It then calculates various statistics (mean, median, 97th percentile, 2.75th percentile) and then reloads them into a new table in the same SQL database. 
 
 Run as: 
@@ -69,7 +73,32 @@ Where table_to_read is the .txt file of the exported database from which to calc
 
 ## RFI_process_graph_avgs.py
 
+other scripts used:  
+fxns_output_process.py
+
 This script takes data from the table made from RFI_avgs_loader.py and creates several graphs to show the nature of the RFI data. 
 
+Run as: 
+```console
+RFI_process_graph_avgs.py <avgs_table_to_read>
+```
+
+Where avgs_table_to_read is the table from the database made from RFI_avgs_loader.py that contains the statistical information from the RFI data. 
+
+## Total_energy_calculator.py 
+
+other scripts used:  
+fxns_output_process.py
+
+This script calculates the total energy of the frequency range of the RFI data from the table specified. 
+
+Run as: 
+```console
+total_energy_calculatory.py <full_data_table> <avgs_data_table>
+```
+
+Where "full_data_table" is the primary RFI table made in RFI_input_for_SQL.py and "avgs_data_table" is the RFI table with statistical information made from RFI_avgs_loader.py. 
+
+This script returns a number, simply the total energy. 
 
 
