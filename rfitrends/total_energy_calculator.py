@@ -18,9 +18,10 @@ import fxns_output_process
 import pymysql
 import random
 import csv
+import sys
 
 
-def total_NRG_calc():
+def total_NRG_calc(full_data_table,avgs_data_table):
     total_intensity = []
     total_frequency = []
     mean_intensity = []
@@ -72,5 +73,7 @@ def total_NRG_calc():
 
 
 if __name__ == "__main__":
+    full_data_table = sys.argv[1]
+    avgs_data_table = sys.argv[2]
     print("starting main function of total energy calculator")
-    total_NRG_calc()
+    total_NRG_calc(full_data_table,avgs_data_table)

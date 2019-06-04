@@ -15,10 +15,11 @@ import pymysql
 import numpy as np
 import matplotlib.pyplot as plt
 import fxns_output_process
+import sys
 
 
 
-def load_data():
+def load_data(avgs_table):
     """
     Loads data from the RFI_Avgs_expanded table in the SQL database for RFI
     returns: frequency: list of frequencies
@@ -32,7 +33,7 @@ def load_data():
     cursor,cnx = fxns_output_process.connect_to_database()
 
     print("fetching data...")
-    query = (" SELECT * FROM RFI_Avgs_expanded; ")
+    query = (" SELECT * FROM "+str(avgs_table)+"; ")
     cursor.execute(query)
 
     frequency = []
@@ -151,8 +152,9 @@ def log_y_axis_lim_graph(frequency,mean_intensity,max_intensity,min_intensity,me
 
 
 if __name__ == "__main__":
+    avgs_table = sys.argv[1] # is usually RFI_avgs_expanded
     print("starting script...")
-    frequency,mean_intensity,max_intensity,min_intensity,median_intensity,low_percentile_intensity,high_percentile_intensity = load_data()
+    frequency,mean_intensity,max_intensity,min_intensity,median_intensity,low_percentile_intensity,high_percentile_intensity = load_data(avgs_table)
     print("starting graphs...")
     log_y_axis_graph(frequency,mean_intensity,max_intensity,min_intensity,median_intensity,low_percentile_intensity,high_percentile_intensity)
     lin_y_axis_graph(frequency,mean_intensity,max_intensity,min_intensity,median_intensity,low_percentile_intensity,high_percentile_intensity)
