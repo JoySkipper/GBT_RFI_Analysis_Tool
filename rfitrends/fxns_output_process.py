@@ -47,6 +47,12 @@ def isSorted(x, key = lambda x: x):
 
 
 def connect_to_database():
+    """
+    Connects to the main SQL database being used for this project
+
+    :returns cnx: the connection call to the database
+    :returns cursor: the cursor of the connection call
+    """
     username = input("Please enter SQL database username... ")
     password = input("Please enter SQL database password... ")
     cnx = pymysql.connect(user=username, password=password,
