@@ -5,6 +5,11 @@ A tool to analyze radio frequency interference data taken from the Green Bank Te
 
 Run RFI_input_for_SQL.py with the text files that you wish to use in the path.
 
+Run as: 
+```console
+RFI_input_for_SQL.py <main_table_name> <dirty_table_name> <filepath_to_RFI_scans>
+```
+
 
 <details><summary> GBT RFI header format: </summary>
 
@@ -52,13 +57,30 @@ Currently, you need the current credentials for jskipper on the colossus dev mac
 
 Run this to get mean, median, etc and load it into a new table in the SQL database. 
 
+Run as: 
+```console
+RFI_avgs_loader.py <table_to_read> <table_to_make> 
+```
+
 ## Step 3: Process_graph_avgs.py
 
 Run this to plot informational graphs on the statistical data calculated from step 2. 
 
+
+Run as: 
+```console
+RFI_process_graph_avgs.py <avgs_table_to_read>
+```
+
 ## Step 4: total_energy_calculator.py
 
 Run this to calculate the total energy of the frequency range given by the text files in step 1. 
+
+
+Run as: 
+```console
+total_energy_calculatory.py <full_data_table> <avgs_data_table>
+```
 
 
 
