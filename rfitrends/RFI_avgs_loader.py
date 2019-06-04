@@ -16,17 +16,17 @@ import numpy as np
 import pymysql
 import math
 import fxns_output_process
+import sys
 
 
 
-def calculate_avgs_load_into_database():
+def calculate_avgs_load_into_database(table_to_read,table_to_make):
     """
     Takes data from the main SQL database table, calculates the averages of that main table, 
     and then creates an averaged table and loads it back into the SQL database
     """
 
-    table_to_read = "Ryans_RFI_table_expanded_f_i_sorted.txt"
-    table_to_make = "RFI_Avgs_expanded"
+
 
     cursor,cnx = fxns_output_process.connect_to_database()
 
@@ -77,7 +77,11 @@ def calculate_avgs_load_into_database():
 	
 
 if __name__ == "__main__":
-    calculate_avgs_load_into_database
+    #table_to_read = "Ryans_RFI_table_expanded_f_i_sorted.txt"
+    #table_to_make = "RFI_Avgs_expanded"
+    table_to_read = sys.argv[1]
+    table_to_make = sys.argv[2]
+    calculate_avgs_load_into_database(table_to_read,table_to_make)
 
 
 

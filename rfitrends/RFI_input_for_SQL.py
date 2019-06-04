@@ -384,7 +384,8 @@ def main():
     dirty_database = sys.argv[2]
     #print(main_database)
     #print(dirty_database)
-    path = '/home/www.gb.nrao.edu/content/IPG/rfiarchive_files/GBTDataImages'
+    #path = '/home/www.gb.nrao.edu/content/IPG/rfiarchive_files/GBTDataImages'
+    path = sys.argv[3]
     #path = '/users/jskipper/Documents/scripts/RFI/problem_files/single_line_test/'
     list_o_paths = []
     list_o_structs = []
