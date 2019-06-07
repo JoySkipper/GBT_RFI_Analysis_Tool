@@ -275,13 +275,11 @@ def DealWith_Overlapping(column_count,line_value):
             intensity_value = (line_value[2][split_value:0])
         return window_value,channel_value,frequency_value,intensity_value
     
-    
-
-def ReadFileLine_ColumnValues(has_header,line_value,column_names,filepath):
+def ReadFileLine_ColumnValues(has_header,line_value: list,column_names,filepath):
     """
     Reads one line in a file that has been determined by the read_file function to be a row with data as opposed to header information
     param has_header: boolean determining if the file has a header or not
-    param line_value: the string containing the information for the particular line of this file 
+    param line_value: the parsed values containing the information for the particular line of this file 
     param column_names: the names of the columns contained in this file
     param filepath: the path to this particular file
 
