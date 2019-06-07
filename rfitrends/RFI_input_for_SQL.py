@@ -152,7 +152,6 @@ def read_file(filepath,main_database,dirty_database):#use this function to read 
             database.append(dirty_database)
             database_value = dirty_database
             validated_frequency = data_entry[2]
-            validated_frontend = header_map.get("frontend")
         data_line = list(data_entry)
         data_line[2] = validated_frequency
         data_line.append(database_value)
