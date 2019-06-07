@@ -111,6 +111,8 @@ def read_file(filepath,main_database,dirty_database):#use this function to read 
     header_map["frontend"] = GBT_receiver_specs.FrontendVerification(header_map["frontend"])
      
     for data_line in f:
+        if data_line == '\n':
+            continue
         data_entry = ReadFileLine_ColumnValues(has_header, data_line.strip().split(), header_map['Column names'], f.name)
         # If Intensity is NaN or overlapping, skip this line, not useful for science
         if data_entry[3] == "NaN" or data_entry[4]:
