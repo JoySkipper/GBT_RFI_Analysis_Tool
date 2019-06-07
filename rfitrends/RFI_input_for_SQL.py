@@ -44,75 +44,79 @@ def read_file(filepath,main_database,dirty_database):#use this function to read 
     param main_database: the primary database to which the person wants their clean data to go
     param dirty_database: the secondary database to which the person wans their "dirty," or nonsensical data to go
     returns formatted_RFI_file: The dictionary with all of the data formatted and organized. 
-
+    returns header_map: contains all information, not just header
     """
     f = open(filepath, 'r') #open file
-    formatted_RFI_file = {}
     #these are lists containing column values that will be added to the dictionary later:
     data = [] 
     database = []
-    has_header = True #assume the file does have a header
-    #open file and go line by line: 
-    counter = 0
-    for line_count,line_value in enumerate(f): 
-
-        #looking at each line in the file and deciding what kind of line it is
-
-        #if it doesn't have a header or titles at all:
-        if (line_count == 0) and not line_value.startswith("#"):#basically, see if this file doesn't have a header
-            has_header = False # signify that file does not have a header
-            formatted_RFI_file,column_names = get_header_info(formatted_RFI_file,filepath)
-
-        #if it's a useless line: 
-        elif line_value == "################ HEADER #################\n" or line_value == "################   Data  ################\n" or line_value == '\n': #ignoring lines that are just header and data indicators - they give us no information
-            continue
+    if '#' in f.read(1):
+        has_header = True
+    else:
+        has_header = False
+    f.seek(0)
 
 
-        #if it's a header value such as "date: 01-24-1995"
-        elif line_value.startswith("#")==True and (":" in line_value) == True:
-            formatted_RFI_file = ReadFileLine_HeaderValue(formatted_RFI_file, line_value,filepath)
-            validated_frontend = formatted_RFI_file.get("frontend")
+    if has_header:
+        def process_header(file):
+            f = file
+            # Dict of header fields and values
+            header = {}
+            previous_line_position = f.tell()
+            # Stupid Python no do while...
+            line = f.readline()
+            # Read the file
+            while line:
+                # Header entries are denoted via '#' symbol
+                if '#' in line:
+                    # Standard header entries are denoted via "key: value" 
+                    try:
+                        header_entry = line.strip('#').strip().split(":")
+                        header[header_entry[0]] = header_entry[1].strip()
+                    except:
+                        # If not, there are two possibilities:
+                        # (1) Title lines (meant to be skipped)
+                        # (2) Column names (in which case it is directly preceded by data (non header line))
 
-        #if it's a column title indicating the names of each column
-        elif line_value.startswith("#")==True and (":" in line_value) == False: 
-            column_names = list(filter(None,((line_value.strip('#').strip('\n')).split(" "))))#creating a list of all the column names
-                
-        #if not all other cases then this line must just be the values given in the columns   
-        #    
+                        # Peek ahead at next line
+                        current_position = f.tell()
+                        # If there is no '#' symbol, the next line is data, therefore this line denotes the column names
+                        if "#" not in f.readline():
+                            # Assumes column names are separated by variable number of spaces/tabs
+                            column_entries = line.strip('#').split()
+                            header['Column names'] = column_entries
+                        # Otherwise it's either a title line, or we don't support the syntax. Regardless, we should skip it
+                        else:
+                            #print("Skipping header line: " + line)
+                            pass
+                        # Undo our peek so we can process appropriately
+                        f.seek(current_position)
+
+                # If there is no header indicator ('#'), we've reached our data entries
+                # Works under assumption that data entries are last in file
+                else:
+                    # Revert to last line and exit loop. We've finished parsing our header
+                    f.seek(previous_line_position)
+                    break
+
+                # Stupid Python no do while
+                previous_line_position = f.tell()
+                line = f.readline()
+
+            return header
+        header_map = process_header(f)
         else:
-            new_line = list(filter(None,((line_value.strip('\n')).split(" "))))#create a list of all the column values
-            window_value,channel_value,frequency_value,intensity_value,overlapping = ReadFileLine_ColumnValues(has_header,new_line,column_names,filepath)
-            if overlapping: 
+        header_map = extrapolate_header(f.name)
+
+    header_map["frontend"] = GBT_receiver_specs.FrontendVerification(header_map["frontend"])
+     
+    for data_line in f:
+        data_entry = ReadFileLine_ColumnValues(has_header, data_line.strip().split(), header_map['Column names'], f.name)
+        # If Intensity is NaN or overlapping, skip this line, not useful for science
+        if data_entry[3] == "NaN" or data_entry[4]:
                 continue
             try:
-                #print(counter)
-                validated_frequency,validated_frontend = FrequencyVerification(frequency_value,formatted_RFI_file)
-                database.append(main_database)
-                database_value = main_database
-                counter += 1
-                
-            except FreqOutsideRcvrBoundsError:
-                database.append(dirty_database)
-                database_value = dirty_database
-                #print(database[-1])
-                #print(counter)
-                validated_frequency = frequency_value
-                validated_frontend = formatted_RFI_file.get("frontend")
-            data_line = [window_value, channel_value, validated_frequency,intensity_value,database_value]
-            if data_line[3] == "NaN":
-                continue
-            data.append(data_line)
-
-    
-    formatted_RFI_file["frontend"] = validated_frontend
-    formatted_RFI_file["Data"] = data
-    return(formatted_RFI_file)#return that dictionary for this particular file we are looking at
-
-
-#---subsection: These are all functions used by read_file()---#
-
-
-def FrequencyVerification(frequency_value,header_information):
+            def FrequencyVerification(frequency_value,header):
     """
     Identifies issues in the frequency value in RFI-data
     1.) Checks for units (MHz vs GHz)
@@ -130,24 +134,35 @@ def FrequencyVerification(frequency_value,header_information):
         validated_frequency = frequency_value
 
 
-    frontend_shorthand = header_information["frontend"]
-    try:
-        frontend_name = GBT_receiver_specs.frontend_aliases[frontend_shorthand]
-    except KeyError: #Anything not in the spec list will be labeled as "UnKnown"
-        print("Frontend \""+str(frontend_shorthand)+"\" not recognized as one from our known list of receivers. If you know the corresponding receiver, please add it to the file GBT_receiver_specs.py for future use. The frontend will be set to \"Unknown\" for now.")
-        frontend_name = 'Unknown'
-    freq_min = GBT_receiver_specs.GBT_receiver_ranges[frontend_name]['freq_min']
-    freq_max = GBT_receiver_specs.GBT_receiver_ranges[frontend_name]['freq_max']
+                freq_min = GBT_receiver_specs.GBT_receiver_ranges[header["frontend"]]['freq_min']
+                freq_max = GBT_receiver_specs.GBT_receiver_ranges[header["frontend"]]['freq_max']
     buffer_factor = .1
     freq_buffer = (freq_max - freq_min)* buffer_factor
-    if GBT_receiver_specs.GBT_receiver_ranges[frontend_name] == "Unknown": 
+                if GBT_receiver_specs.GBT_receiver_ranges[header["frontend"]] == "Unknown": 
         freq_buffer = 0
     if float(validated_frequency) < (freq_min - freq_buffer) or float(validated_frequency) > (freq_max + freq_buffer):
         raise FreqOutsideRcvrBoundsError
     #if str(validated_frequency) == "1.788023":
     #    print(validated_frequency)
-    return validated_frequency,frontend_name
+                return validated_frequency
+            validated_frequency = FrequencyVerification(data_entry[2],header_map)
+            database.append(main_database)
+            database_value = main_database
 
+        except FreqOutsideRcvrBoundsError:
+            database.append(dirty_database)
+            database_value = dirty_database
+            validated_frequency = data_entry[2]
+            validated_frontend = header_map.get("frontend")
+        data_line = list(data_entry)
+        data_line[2] = validated_frequency
+        data_line.append(database_value)
+
+        data.append(data_line)
+
+    header_map['Data'] = data
+    return(header_map)
+    
 def extrapolate_header(filepath):
     """
     Gleans as much information that would normally be in a header from a file that has been determined by the read_file function to not have a header 
@@ -430,9 +445,9 @@ def main():
             writer.write("# units: "+str(formatted_RFI_file.get("units"))+"\n")
             writer.write("################   Data  ################\n")
             writer.write("# IFWindow   Channel Frequency(MHz)  Intensity(Jy)\n")
-            for linenum in range(len(formatted_RFI_file.get("Data")[0])):#for each value in that multi-valued set
-                writer.write("         "+str(formatted_RFI_file.get("Data")[linenum][0]+"         "+str(formatted_RFI_file.get("Data")[linenum][1]+"         "+str(formatted_RFI_file.get("Data")[linenum][2]+"         "+str(formatted_RFI_file.get("Data")[linenum][3]+"\n")))))
-                add_values = "INSERT INTO "+str(formatted_RFI_file.get("Data")[linenum][4])+" (feed,frontend,`azimuth (deg)`,projid,`resolution (MHz)`,Window,exposure,utc_hrs,date,number_IF_Windows,Channel,backend,mjd,Frequency_MHz,lst,filename,polarization,source,tsys,frequency_type,units,Intensity_Jy,scan_number,`elevation (deg)`) VALUES (\""+str(formatted_RFI_file.get("feed"))+"\",\""+str(formatted_RFI_file.get("frontend"))+"\",\""+str(formatted_RFI_file.get("azimuth (deg)"))+"\",\""+str(formatted_RFI_file.get("projid"))+"\",\""+str(formatted_RFI_file.get("frequency_resolution (MHz)"))+"\",\""+str(formatted_RFI_file.get("Data")[linenum][0])+"\",\""+str(formatted_RFI_file.get("exposure (sec)"))+"\",\""+str(formatted_RFI_file.get("utc (hrs)"))+"\",\""+str(formatted_RFI_file.get("date"))+"\",\""+str(formatted_RFI_file.get("number_IF_Windows"))+"\",\""+str(formatted_RFI_file.get("Data")[linenum][1])+"\",\""+str(formatted_RFI_file.get("backend"))+"\",\""+str(formatted_RFI_file.get("mjd"))+"\",\""+str(formatted_RFI_file.get("Data")[linenum][2])+"\",\""+str(formatted_RFI_file.get("lst (hrs)"))+"\",\""+str(formatted_RFI_file.get("filename"))+"\",\""+str(formatted_RFI_file.get("polarization"))+"\",\""+str(formatted_RFI_file.get("source"))+"\",\""+str(formatted_RFI_file.get("tsys"))+"\",\""+str(formatted_RFI_file.get("frequency_type"))+"\",\""+str(formatted_RFI_file.get("units"))+"\",\""+str(formatted_RFI_file.get("Data")[linenum][3])+"\",\""+str(formatted_RFI_file.get("scan_number"))+"\",\""+str(formatted_RFI_file.get("elevation (deg)"))+"\");"
+            for data_entry in formatted_RFI_file.get("Data"):#for each value in that multi-valued set
+                writer.write("         "+str(data_entry[0]+"         "+str(data_entry[1]+"         "+str(data_entry[2]+"         "+str(data_entry[3]+"\n")))))
+                add_values = "INSERT INTO "+str(data_entry[5])+" (feed,frontend,`azimuth (deg)`,projid,`resolution (MHz)`,Window,exposure,utc_hrs,date,number_IF_Windows,Channel,backend,mjd,Frequency_MHz,lst,filename,polarization,source,tsys,frequency_type,units,Intensity_Jy,scan_number,`elevation (deg)`) VALUES (\""+str(formatted_RFI_file.get("feed"))+"\",\""+str(formatted_RFI_file.get("frontend"))+"\",\""+str(formatted_RFI_file.get("azimuth (deg)"))+"\",\""+str(formatted_RFI_file.get("projid"))+"\",\""+str(formatted_RFI_file.get("frequency_resolution (MHz)"))+"\",\""+str(data_entry[0])+"\",\""+str(formatted_RFI_file.get("exposure (sec)"))+"\",\""+str(formatted_RFI_file.get("utc (hrs)"))+"\",\""+str(formatted_RFI_file.get("date"))+"\",\""+str(formatted_RFI_file.get("number_IF_Windows"))+"\",\""+str(data_entry[1])+"\",\""+str(formatted_RFI_file.get("backend"))+"\",\""+str(formatted_RFI_file.get("mjd"))+"\",\""+str(data_entry[2])+"\",\""+str(formatted_RFI_file.get("lst (hrs)"))+"\",\""+str(formatted_RFI_file.get("filename"))+"\",\""+str(formatted_RFI_file.get("polarization"))+"\",\""+str(formatted_RFI_file.get("source"))+"\",\""+str(formatted_RFI_file.get("tsys"))+"\",\""+str(formatted_RFI_file.get("frequency_type"))+"\",\""+str(formatted_RFI_file.get("units"))+"\",\""+str(data_entry[3])+"\",\""+str(formatted_RFI_file.get("scan_number"))+"\",\""+str(formatted_RFI_file.get("elevation (deg)"))+"\");"
                 cursor.execute(add_values)
 
         
