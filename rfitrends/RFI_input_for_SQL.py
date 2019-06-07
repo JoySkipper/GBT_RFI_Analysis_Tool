@@ -148,7 +148,7 @@ def read_file(filepath,main_database,dirty_database):#use this function to read 
             validated_frequency = FrequencyVerification(data_entry[2],header_map)
             database.append(main_database)
             database_value = main_database
-
+            
         except FreqOutsideRcvrBoundsError:
             database.append(dirty_database)
             database_value = dirty_database
