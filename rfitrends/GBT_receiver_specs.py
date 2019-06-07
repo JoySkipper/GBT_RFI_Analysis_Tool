@@ -72,3 +72,11 @@ GBT_receiver_ranges = {
     'Unknown':{'freq_min':290.0,'freq_max':115300.0}
 }
 
+
+def FrontendVerification(frontend_input):
+    try:
+        frontend_verified = frontend_aliases[frontend_input]
+    except KeyError: #Anything not in the spec list will be labeled as "UnKnown"
+        print("Frontend \""+str(frontend_input)+"\" not recognized as one from our known list of receivers. If you know the corresponding receiver, please add it to the file GBT_receiver_specs.py for future use. The frontend will be set to \"Unknown\" for now.")
+        frontend_verified = 'Unknown'
+    return(frontend_verified)
