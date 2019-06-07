@@ -35,12 +35,6 @@ class FreqOutsideRcvrBoundsError(Exception):
     pass
 
 
-#Section 1: These first functions are for reading in a file and parsing up the data into a single dictionary containing all the necessary values:
-#_____________________________________________________________
-################################################################################################################################################################################################################################
-
-
-
 
 def read_file(filepath,main_database,dirty_database):#use this function to read in a particular file and return a dictionary with all header values and lists of the data
     """
@@ -372,11 +366,6 @@ def ReadFileLine_ColumnValues(has_header,line_value,column_names,filepath):
 
     
     return(window_value,channel_value,frequency_value,intensity_value,overlapping)
-
-
-# Section 5: Code!
-###____________________start of actual code (not functions)_____________________###
-################################################################################################################################################################################################################################
 
 
 def main():
