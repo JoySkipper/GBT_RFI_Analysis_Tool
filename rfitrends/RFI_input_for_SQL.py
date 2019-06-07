@@ -148,85 +148,63 @@ def FrequencyVerification(frequency_value,header_information):
     #    print(validated_frequency)
     return validated_frequency,frontend_name
 
-def get_header_info(dictionary_per_file,filepath):
+def extrapolate_header(filepath):
     """
     Gleans as much information that would normally be in a header from a file that has been determined by the read_file function to not have a header 
     and populates it into that file's dictionary.
 
-    param dictionary_per_file: The current dictionary being populated for that file
     param filepath: The path to that particular file
 
-    returns dictionary per file, column_names: the names of the columns in that file
+    returns extrapolated_header: dict with extrapolated header information derived from file name
     """
+    extrapolated_header = {}
+    
     #Gleaning information from a file that does not contain a file header for information
     filename = (filepath.split("/")[-1])# splitting filepath back down to just the filename    
-    dictionary_per_file.update({"filename": filename})
+    extrapolated_header.update({"filename": filename})
     filename_temporary = re.split('[_.]',filename)#split the filename into the naming components (there's no header, so we have to glean info from the filename)
     filename = filename_temporary
 
     unix_timestamp = (os.path.getmtime(filepath))
     date = (datetime.datetime.utcfromtimestamp(unix_timestamp))
-    dictionary_per_file.update({"date": (date.strftime('%Y-%m-%d %H:%M:%S'))})# gleaning info from filename
+    extrapolated_header.update({"date": (date.strftime('%Y-%m-%d %H:%M:%S'))})# gleaning info from filename
     #Calculating MJD...
     jd = julian.to_jd(date+ datetime.timedelta(hours=12),fmt='jd')
     mjd = jd  - 2400000.5
-    dictionary_per_file.update({"mjd": mjd})
-    dictionary_per_file.update({"azimuth (deg)":float(filename[7][2:])})
-    dictionary_per_file.update({"elevation (deg)":float(filename[8][2:])})
-    dictionary_per_file.update({"feed": "NaN"})
-    dictionary_per_file.update({"frontend": str(filename[2])})
-    dictionary_per_file.update({"projid": "NaN"})
-    dictionary_per_file.update({"frequency_resolution (MHz)": "NaN"})
-    dictionary_per_file.update({"Window": "NaN"})
-    dictionary_per_file.update({"exposure": "NaN"})
+    extrapolated_header.update({"mjd": mjd})
+    extrapolated_header.update({"azimuth (deg)":float(filename[7][2:])})
+    extrapolated_header.update({"elevation (deg)":float(filename[8][2:])})
+    extrapolated_header.update({"feed": "NaN"})
+    extrapolated_header.update({"frontend": str(filename[2])})
+    extrapolated_header.update({"projid": "NaN"})
+    extrapolated_header.update({"frequency_resolution (MHz)": "NaN"})
+    extrapolated_header.update({"Window": "NaN"})
+    extrapolated_header.update({"exposure": "NaN"})
     utc_hr = (float(date.strftime("%H")))
     utc_min = (float(date.strftime("%M"))/60.0 )
     utc_sec = (float(date.strftime("%S"))/3600.0)
     utc = utc_hr+utc_min+utc_sec
-    dictionary_per_file.update({"utc (hrs)": utc})
-    dictionary_per_file.update({"number_IF_Windows": "NaN"})
-    dictionary_per_file.update({"Channel": "NaN"})
-    dictionary_per_file.update({"backend": "NaN"})
+    extrapolated_header.update({"utc (hrs)": utc})
+    extrapolated_header.update({"number_IF_Windows": "NaN"})
+    extrapolated_header.update({"Channel": "NaN"})
+    extrapolated_header.update({"backend": "NaN"})
 
     year_formatted = date.strftime('%Y')[2:]
     utc_formatted = date.strftime('%m%d'+year_formatted+' %H%M')
     LSThh,LSTmm,LSTss = LST_calculator.LST_calculator(utc_formatted)
     LST = LSThh + LSTmm/60.0 + LSTss/3600.0
-    dictionary_per_file.update({"lst (hrs)": LST})
+    extrapolated_header.update({"lst (hrs)": LST})
 
-    dictionary_per_file.update({"polarization":filename[6]})
-    dictionary_per_file.update({"source":"NaN"})
-    dictionary_per_file.update({"tsys":"NaN"})
-    dictionary_per_file.update({"frequency_type":"NaN"})
-    dictionary_per_file.update({"Units":"Jy"})
-    dictionary_per_file.update({"scan_number":"NaN"})
+    extrapolated_header.update({"polarization":filename[6]})
+    extrapolated_header.update({"source":"NaN"})
+    extrapolated_header.update({"tsys":"NaN"})
+    extrapolated_header.update({"frequency_type":"NaN"})
+    extrapolated_header.update({"Units":"Jy"})
+    extrapolated_header.update({"scan_number":"NaN"})
 
-    column_names = ["Frequency (MHz)","Intensity (Jy)"] # we can't glean the column names from the header either, but we know what they are
-
-    return(dictionary_per_file,column_names)
-
-def ReadFileLine_HeaderValue(dictionary_per_file, line_value,filepath):
-    """
-    Reads the current line, which has been determined by read_file to be a line with header information. Gleans that header information and loads it 
-    into the file's dictionary. 
-    
-    param dictionary_per_file: The current dictionary being populated for that file
-    param line_value: The current line of the file in a raw unaltered string
-    param filepath: The path to that particular file
-
-    returns dictionary_per_file: The current dictionary being populated for that file, edited to now include that line's header information.
-    """
-    filename = (filepath.split("/")[-1])# splitting filepath back down to just the filename    
-    dictionary_per_file.update({"filename": filename})
-    #Reading the line of a file that is a part of a header
-    header_name, header_value = line_value.split(":") # get the name assigned to the header and it's associated value, say "Date: 01-24-1995" or something
-    header_name = header_name.strip(' \t\n\r#') #get rid of hashtags and anything but the text we need from these headers
-    header_value = header_value.strip(' \t\n\r#')
-
-    header_line_dict = {header_name:header_value}#creating a dictionary with the header category and its value
-    dictionary_per_file.update(header_line_dict)#adding that dictionary to the dictionary for this particular file
-
-    return dictionary_per_file
+    #column_names = ["Frequency (MHz)","Intensity (Jy)"] # we can't glean the column names from the header either, but we know what they are
+    extrapolated_header['Column names'] = ["Frequency (MHz)","Intensity (Jy)"]
+    return(extrapolated_header)
 
 def CheckFor_OverlappingColumns(line_value):
     """
