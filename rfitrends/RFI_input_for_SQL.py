@@ -405,18 +405,6 @@ def main():
         
         formatted_RFI_file = read_file(filepath,main_database,dirty_database)
 
-        def check_data_lengths(formatted_RFI_file): 
-            data_lengths = {
-                'Window length': len(formatted_RFI_file.get("Data")[0]),
-                'Channel length': len(formatted_RFI_file.get("Data")[1]),
-                'Frequency length': len(formatted_RFI_file.get("Data")[2]),
-                'Intensity length': len(formatted_RFI_file.get("Data")[3])
-            }
-            if len(set(data_lengths.values())) != 1:
-                print("Could not extract: Frequency, Intensity, Channel, and Window fields are not one to one. Check your data")
-                print(data_lengths)
-                exit()
-        check_data_lengths(formatted_RFI_file)
         with open('/users/jskipper/Documents/scripts/RFI/test_writing_files/test_file_'+filename, 'w') as writer:
             writer.write("################ HEADER #################\n")
             writer.write("# projid: "+str(formatted_RFI_file.get("projid"))+"\n")
