@@ -3,3 +3,6 @@
 
 #Ignoring python compiled code:
 *.pyc
+
+#Ignoring RFItrends pycache:
+.rfitrends/__pycache__/*
