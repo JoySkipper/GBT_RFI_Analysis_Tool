@@ -1,17 +1,9 @@
-###_________________________________________________________###
+"""
+.. module:: total_energy_calculator.py
+    :synopsis: Calculates the total energy of the entire frequency range for an RFI mySQL database
+.. moduleauthor:: Joy Skipper <jskipper@nrao.edu>
+"""
 
-#  Code Name: RFI_input_for_SQL.py
-
-#  Code Purpose: To calculate the total energy of the frequency range desired using the regular SQL database as well as the SQL_avgs database
-
-#  For any questions please contact Joy Nicole Skipper at jskipper@nrao.edu
-
-###_________________________________________________________###
-################################################################################################################################################################################################################################
-
-
-print("running total energy calculator")
-print("importing values...")
 import numpy as np
 import math
 import fxns_output_process

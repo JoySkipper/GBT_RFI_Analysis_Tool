@@ -1,20 +1,8 @@
-###_________________________________________________________###
-
-#  Code Name: RFI_input_for_SQL.py
-
-#  Code Purpose: To read in multiple types of ascii files containing RFI data across several decades. Then output in a form usable by a mySQL database.
-
-
-#  For any questions please contact Joy Nicole Skipper at jskipper@nrao.edu
-
-###_________________________________________________________###
-################################################################################################################################################################################################################################
-
-
-
-
-
-
+"""
+.. module:: RFI_input_for_SQL.py
+    :synopsis: To read in multiple types of ascii files containing RFI data across several decades. Then output in a form usable by a mySQL database.
+.. moduleauthor:: Joy Skipper <jskipper@nrao.edu>
+"""
 
 import numpy as np
 import matplotlib.pyplot as plt

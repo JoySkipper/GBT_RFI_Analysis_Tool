@@ -1,23 +1,14 @@
-###_________________________________________________________###
+"""
+.. module:: RFI_process_graph_avgs.py
+    :synopsis: To take the data from the SQL-Avgs database and make appropriate graphs for display
+.. moduleauthor:: Joy Skipper <jskipper@nrao.edu>
+"""
 
-#  Code Name: RFI_process_graph_avgs.py
-
-#  Code Purpose: To take the data from the SQL-Avgs database and make appropriate graphs for display
-
-#  For any questions please contact Joy Nicole Skipper at jskipper@nrao.edu
-
-###_________________________________________________________###
-################################################################################################################################################################################################################################
-
-
-print("Importing packages...")
 import pymysql
 import numpy as np
 import matplotlib.pyplot as plt
 import fxns_output_process
 import sys
-
-
 
 def load_data(avgs_table):
     """

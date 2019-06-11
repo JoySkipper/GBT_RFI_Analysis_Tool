@@ -1,29 +1,18 @@
-#
-###_________________________________________________________###
+"""
+.. module:: fxns_output_process.py
+    :synopsis: To compile small functions to be used in processing data from the SQL database
+.. moduleauthor:: Joy Skipper <jskipper@nrao.edu>
+"""
 
-#  Code Name: fxns_output_process.py
-#  Code Purpose: To compile small functions to be used in processing data from the SQL database
-
-#  For any questions please contact Joy Nicole Skipper at jskipper@nrao.edu
-
-###_________________________________________________________###
-################################################################################################################################################################################################################################
-
-
-
-
-print("importing values for fxn output process")
-
-
-def gather_list(connection_call,query):
+def gather_list(cursor,query):
     """
     Compiles data from an SQL query and loads it into a list
-    param connection_call: is the infomration on the SQL connection call
+    param cursor: is the information on the SQL connection call
     param query: is the SQL query to be put into the database
 
     returns value_list: the list of information from the SQL database
     """
-    cursor = connection_call
+
     cursor.execute(query)
 
 
