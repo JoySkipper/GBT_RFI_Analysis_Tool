@@ -1,15 +1,8 @@
-###_________________________________________________________###
-
-#  Code Name: RFI_input_for_SQL.py
-
-#  Code Purpose: To take data from regular SQL database, calculate averages and statistics, and load it into SQL-avgs database. 
-
-#  For any questions please contact Joy Nicole Skipper at jskipper@nrao.edu
-
-###_________________________________________________________###
-################################################################################################################################################################################################################################
-
-
+"""
+.. module:: RFI_avgs_loader.py
+    :synopsis: To perform statistical analysis on an RFI mySQL database
+.. moduleauthor:: Joy Skipper <jskipper@nrao.edu>
+"""
 
 import csv
 import numpy as np

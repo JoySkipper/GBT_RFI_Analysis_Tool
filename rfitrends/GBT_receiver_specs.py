@@ -1,3 +1,8 @@
+"""
+.. module:: GBT_receiver_specs.py
+    :synopsis: Provides Green Bank Telescope frontend receiver aliases and frequency ranges
+.. moduleauthor:: Joy Skipper <jskipper@nrao.edu>
+"""
 
 # frontend_aliases: used as a reference for various names given to our receivers, and changing them to a standardized set of names
 frontend_aliases = {
