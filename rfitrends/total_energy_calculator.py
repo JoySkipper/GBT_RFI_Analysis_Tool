@@ -42,26 +42,19 @@ def total_NRG_calc(full_data_table,avgs_data_table):
 
         f.close()
 
-
-    #print(str(len(np.diff(frequency))))
-    #print(str(len(mean_intensity[:-1])))  
     print("calculating mean flux times delta nu")
     mean_flux_times_delta_nu = [a*b for a,b in zip(mean_intensity[:-1],np.diff(avg_frequency))]  
     print("calculating median flux times delta nu")
     median_flux_times_delta_nu = [a*b for a,b in zip(median_intensity[:-1],np.diff(avg_frequency))]  
     print("calculating total flux times delta nu")
     total_flux_times_delta_nu = [a*b for a,b in zip(total_intensity[:-1],np.diff(total_frequency))]
-    #print(mean_flux_times_delta_nu)
-    #input("stop")
+ 
     total_NRG_mean = sum(mean_flux_times_delta_nu)*0.70*7853.98*math.pow(10,-26)
     total_NRG_median = sum(median_flux_times_delta_nu)*0.70*7853.98*math.pow(10,-26)
     total_NRG = sum(total_flux_times_delta_nu)*0.70*7853.98*math.pow(10,-26)
     print("total mean energy: "+str(total_NRG_mean))
     print("total median energy: "+str(total_NRG_median))
     print("total energy: "+str(total_NRG))
-    
-
-    #cnx.close()
 
 
 if __name__ == "__main__":
