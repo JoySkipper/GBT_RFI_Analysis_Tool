@@ -4,7 +4,10 @@
 .. moduleauthor:: Joy Skipper <jskipper@nrao.edu>
 """
 
-def gather_list(cursor,query):
+import pymysql.connect
+from pymysql.cursors import Cursor
+
+def gather_list(cursor: Cursor,query):
     """
     Compiles data from an SQL query and loads it into a list
     param cursor: is the information on the SQL connection call
@@ -14,11 +17,7 @@ def gather_list(cursor,query):
     """
 
     cursor.execute(query)
-
-
     value_list = []
-
-
     row = cursor.fetchone() #getting each row
  
     while row is not None:
@@ -27,20 +26,12 @@ def gather_list(cursor,query):
 
     return(value_list)
 
-
-def isSorted(x, key = lambda x: x): 
-    """
-    checks to see if a python list is sorted
-    """
-    return all([key(x[i]) <= key(x[i + 1]) for i in range(len(x) - 1)])
-
-
 def connect_to_database():
     """
     Connects to the main SQL database being used for this project
 
-    :returns cnx: the connection call to the database
-    :returns cursor: the cursor of the connection call
+    :returns cnx: the pymysql connection call to the database
+    :returns cursor: the pymysql cursor of the connection call
     """
     username = input("Please enter SQL database username... ")
     password = input("Please enter SQL database password... ")

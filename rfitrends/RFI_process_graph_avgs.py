@@ -21,7 +21,7 @@ def load_data(avgs_table):
     returns: low_percentile_intensity: list of 2nd percentile intensities
     returns: high_percentile_intensity: list of 97th percentile intensities
     """
-    cursor,cnx = fxns_output_process.connect_to_database()
+    cursor,_ = fxns_output_process.connect_to_database()
 
     print("fetching data...")
     query = (" SELECT * FROM "+str(avgs_table)+"; ")
@@ -104,6 +104,91 @@ def lin_y_axis_graph(frequency,mean_intensity,max_intensity,min_intensity,median
     # since these are Gaussian random variables the mean and median will be nearly equal
     plt.plot(frequency,median_intensity, color="green",label='median')
     plt.legend(loc='upper right')
+
+def log_y_axis_graph(frequency,mean_intensity,max_intensity,min_intensity,median_intensity,low_percentile_intensity,high_percentile_intensity):
+    """
+    Graphs intensity vs frequency with the y-axis in log-scale
+    param: frequency: list of frequencies
+    param: mean_intensity: list of mean intensities
+    param: max_intensity: list of max intensities
+    param: min_intensity: list of min intensities
+    param: median intensity: list of median intensities
+    param: low_percentile_intensity: list of 2nd percentile intensities
+    param: high_percentile_intensity: list of 97th percentile intensities
+    """
+    print("Making graph with log y-axis...")
+    plt.plot(frequency,max_intensity, color="red",label='max or min')
+    plt.plot(frequency,min_intensity, color="red")
+    # These next two lines will plot the 2.75 and 97.5 percentiles, i.e. showing us the range that encompasses 95% of the data
+    plt.plot(frequency,low_percentile_intensity, color="magenta",label='high or low percentiles (2.75 or 97.5)')
+    plt.plot(frequency,high_percentile_intensity, color="magenta")
+    plt.plot(frequency,mean_intensity, color="blue",label='mean')
+    # since these are Gaussian random variables the mean and median will be nearly equal
+    plt.plot(frequency,median_intensity, color="green",label='median')
+    plt.legend(loc='upper right')
+    plt.xlabel("Frequency (MHz)")
+    plt.ylabel("log(Intensity) (Jy)")
+    plt.yscale('log')
+    plt.title("Frequency vs. Intensity (Log Version)")
+    plt.show()
+    plt.clf()
+
+def lin_y_axis_graph(frequency,mean_intensity,max_intensity,min_intensity,median_intensity,low_percentile_intensity,high_percentile_intensity):
+    """
+    Graphs intensity vs frequency with the y-axis in linear scale
+    param: frequency: list of frequencies
+    param: mean_intensity: list of mean intensities
+    param: max_intensity: list of max intensities
+    param: min_intensity: list of min intensities
+    param: median intensity: list of median intensities
+    param: low_percentile_intensity: list of 2nd percentile intensities
+    param: high_percentile_intensity: list of 97th percentile intensities
+    """
+    print("Making graph with linear y-axis...")
+    plt.plot(frequency,max_intensity, color="red",label='max or min')
+    plt.plot(frequency,min_intensity, color="red")
+    # These next two lines will plot the 2.75 and 97.5 percentiles, i.e. showing us the range that encompasses 95% of the data
+    plt.plot(frequency,low_percentile_intensity, color="magenta",label='high or low percentiles (2.75 or 97.5)')
+    plt.plot(frequency,high_percentile_intensity, color="magenta")
+    plt.plot(frequency,mean_intensity, color="blue",label='mean')
+    # since these are Gaussian random variables the mean and median will be nearly equal
+    plt.plot(frequency,median_intensity, color="green",label='median')
+    plt.legend(loc='upper right')
+    plt.xlabel("Frequency (MHz)")
+    plt.ylabel("Intensity (Jy)")
+    plt.title("Frequency vs. Intensity (Linear Version)")
+    plt.show()
+    plt.clf()
+
+
+def log_y_axis_lim_graph(frequency,mean_intensity,max_intensity,min_intensity,median_intensity,low_percentile_intensity,high_percentile_intensity):
+    """
+    Graphs intensity vs frequency with the y-axis in log-scale, and the frequency range only from 600-700 MHz
+    param: frequency: list of frequencies
+    param: mean_intensity: list of mean intensities
+    param: max_intensity: list of max intensities
+    param: min_intensity: list of min intensities
+    param: median intensity: list of median intensities
+    param: low_percentile_intensity: list of 2nd percentile intensities
+    param: high_percentile_intensity: list of 97th percentile intensities
+    """
+    print("Making graph with log y-axis 600-700 MHz...")
+    plt.plot(frequency,max_intensity, color="red",label='max or min')
+    plt.plot(frequency,min_intensity, color="red")
+    # These next two lines will plot the 2.75 and 97.5 percentiles, i.e. showing us the range that encompasses 95% of the data
+    plt.plot(frequency,low_percentile_intensity, color="magenta",label='high or low percentiles (2.75 or 97.5)')
+    plt.plot(frequency,high_percentile_intensity, color="magenta")
+    plt.plot(frequency,mean_intensity, color="blue",label='mean')
+    # since these are Gaussian random variables the mean and median will be nearly equal
+    plt.plot(frequency,median_intensity, color="green",label='median')
+    plt.legend(loc='upper right')
+    plt.xlabel("Frequency (MHz)")
+    plt.ylabel("log(Intensity) (Jy)")
+    plt.title("Frequency vs Intensity (Log, 600-700 MHz only)")
+    plt.yscale('log')
+    plt.xlim(600.00,700.0)
+    plt.show()
+    plt.clf()
     plt.xlabel("Frequency (MHz)")
     plt.ylabel("Intensity (Jy)")
     plt.title("Frequency vs. Intensity (Linear Version)")

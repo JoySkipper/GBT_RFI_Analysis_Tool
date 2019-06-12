@@ -11,18 +11,13 @@ import math
 import fxns_output_process
 import sys
 
-
-
 def calculate_avgs_load_into_database(table_to_read,table_to_make):
     """
     Takes data from the main SQL database table, calculates the averages of that main table, 
     and then creates an averaged table and loads it back into the SQL database
     """
 
-
-
-    cursor,cnx = fxns_output_process.connect_to_database()
-
+    cursor,_ = fxns_output_process.connect_to_database()
 
     with open(table_to_read) as f:
         reader=csv.reader(f)
@@ -37,11 +32,12 @@ def calculate_avgs_load_into_database(table_to_read,table_to_make):
             print(frequency)
             #math.isclose sees which list of frequencies are the same to 1e-9 (basically almost the same frequencies. We have multiple intensity values for each Frequency)
             #We then calculate the max, min, etc statistics for those intensities of the same frequencies
-            if math.isclose(cached_frequency,frequency)or (cached_frequency) == 0.00:
+            if math.isclose(cached_frequency,frequency,rel_tol=1e-6) or (cached_frequency) == 0.00:
                 
                 cached_frequency = frequency 
                 cached_intensity = np.append(cached_intensity,intensity)
                 number_of_repeat_frequencies += 1
+
             else: 
                 
                 average_intensity = np.average(cached_intensity)
