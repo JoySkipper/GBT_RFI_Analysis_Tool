@@ -7,7 +7,7 @@
 import pymysql
 import numpy as np
 import matplotlib.pyplot as plt
-import fxns_output_process
+import rfitrends.fxns_output_process
 import sys
 
 def load_data(avgs_table):

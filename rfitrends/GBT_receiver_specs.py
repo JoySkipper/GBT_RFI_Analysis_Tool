@@ -41,9 +41,9 @@ frontend_aliases = {
     'Rcvr68_92':'Rcvr68_92',
     'Rcvr_MBA1_2':'Rcvr_MBA1_2',
     'RcvrArray75_115':'Rcvr75_115',
-    '82':'Unknown',
-    '83':'Unknown', 
-    'L2':'Unknown'
+    '82':'Rcvr8_10',
+    '83':'Rcvr8_10', 
+    'L2':'Rcvr1_2'
 
 
 

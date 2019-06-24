@@ -12,12 +12,12 @@ import copy
 import re
 import julian
 import datetime
-import LST_calculator
+import rfitrends.LST_calculator
 import mysql.connector
 import getpass
-import GBT_receiver_specs
+import rfitrends.GBT_receiver_specs
 import sys
-import fxns_output_process
+import rfitrends.fxns_output_process
 
 class FreqOutsideRcvrBoundsError(Exception):
     pass
