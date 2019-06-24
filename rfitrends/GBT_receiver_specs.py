@@ -19,16 +19,11 @@ frontend_aliases = {
     'RcvrArr': 'Array All',
     'RcvrArray1_2':'RcvrArray1_2',
     'Rcvr1_2': 'Rcvr1_2',
-    'L1': 'Rcvr1_2',
     'Rcvr2_3': 'Rcvr2_3',
-    'S1': 'Rcvr2_3',
     'Rcvr4_6': 'Rcvr4_8',
     'Rcvr4_8':'Rcvr4_8',
-    'C1':'Rcvr4_8',
     'Rcvr8_1': 'Rcvr8_10',
     'Rcvr8_10':'Rcvr8_10',
-    'X1': 'Rcvr8_10',
-    'K1':'Kband All',
     'Rcvr12_': 'Rcvr12_18',
     'Rcvr12_18':'Rcvr12_18',
     'KU1': 'Rcvr12_18',
@@ -41,13 +36,21 @@ frontend_aliases = {
     'Rcvr68_92':'Rcvr68_92',
     'Rcvr_MBA1_2':'Rcvr_MBA1_2',
     'RcvrArray75_115':'Rcvr75_115',
-    '82':'Rcvr8_10',
-    '83':'Rcvr8_10', 
-    'L2':'Rcvr1_2'
-
-
-
-
+    '3':'Rcvr_342',
+    '4':'Rcvr_450',
+    '6':'Rcvr_600',
+    '8':'Rcvr_800',
+    'P':'RcvrPF_2',
+    'L':'Rcvr1_2',
+    'S':'Rcvr2_3',
+    'C':'Rcvr4_6',
+    'X':'Rcvr8_10',
+    'U':'Rcvr12_18',
+    'K':'RcvrArray18_26',
+    'A':'Rcvr26_40',
+    'Q':'Rcvr40_52',
+    'W':'Rcvr68_92',
+    'G':'RcvrArray75_115'
 }
 
 
@@ -78,10 +81,22 @@ GBT_receiver_ranges = {
 }
 
 
+def frontend_modify_input(frontend_input):
+    try: 
+        int(frontend_input[1:]) #takes everything except the first letter to check if they are all integers. If so, we can ignore them and use the standard character coding for our frontends
+        return(frontend_input[0])
+    except(ValueError): #otherwise, we can't be sure it's using the standard character code, so we're going to pass the whole receiver value
+        return(frontend_input)
+
 def FrontendVerification(frontend_input):
+    frontend_input = frontend_modify_input(frontend_input)
     try:
         frontend_verified = frontend_aliases[frontend_input]
     except KeyError: #Anything not in the spec list will be labeled as "UnKnown"
         print("Frontend \""+str(frontend_input)+"\" not recognized as one from our known list of receivers. If you know the corresponding receiver, please add it to the file GBT_receiver_specs.py for future use. The frontend will be set to \"Unknown\" for now.")
         frontend_verified = 'Unknown'
     return(frontend_verified)
+
+
+
+        
