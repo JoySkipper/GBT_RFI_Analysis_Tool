@@ -6,7 +6,7 @@
 
 import numpy as np
 import math
-import fxns_output_process
+import rfitrends.fxns_output_process
 import pymysql
 import random
 import csv

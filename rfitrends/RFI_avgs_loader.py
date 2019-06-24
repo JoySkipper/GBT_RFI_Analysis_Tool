@@ -8,7 +8,7 @@ import csv
 import numpy as np
 import pymysql
 import math
-import fxns_output_process
+import rfitrends.fxns_output_process
 import sys
 
 def calculate_avgs_load_into_database(table_to_read,table_to_make):
