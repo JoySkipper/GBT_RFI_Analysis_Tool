@@ -347,14 +347,8 @@ def ReadFileLine_ColumnValues(has_header,line_value: list,column_names,filepath)
     return(window_value,channel_value,frequency_value,intensity_value,overlapping)
 
 
-def main():
-    main_database = sys.argv[1]
-    dirty_database = sys.argv[2]
-    #print(main_database)
-    #print(dirty_database)
-    #path = '/home/www.gb.nrao.edu/content/IPG/rfiarchive_files/GBTDataImages'
-    path = sys.argv[3]
-    #path = '/users/jskipper/Documents/scripts/RFI/problem_files/single_line_test/'
+def write_to_database(main_database,dirty_database,path,files_to_process = "all"):
+
     list_o_paths = []
     list_o_structs = []
 
@@ -436,7 +430,14 @@ if __name__ == "__main__":
     # # Pause the program until a remote debugger is attached 
     print("Waiting for debugger attach...") 
     #ptvsd.wait_for_attach()
-    main()
+    main_database = sys.argv[1]
+    dirty_database = sys.argv[2]
+    #print(main_database)
+    #print(dirty_database)
+    #path = '/home/www.gb.nrao.edu/content/IPG/rfiarchive_files/GBTDataImages'
+    path = sys.argv[3]
+    #path = '/users/jskipper/Documents/scripts/RFI/problem_files/single_line_test/'
+    write_to_database(main_database,dirty_database,path)
 
 
         
