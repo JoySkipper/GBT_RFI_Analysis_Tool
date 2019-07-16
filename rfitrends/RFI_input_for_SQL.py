@@ -13,7 +13,8 @@ import re
 import julian
 import datetime
 import rfitrends.LST_calculator
-import mysql.connector
+from mysql import connector
+#import mysql.connector
 import getpass
 import rfitrends.GBT_receiver_specs
 import sys
@@ -34,6 +35,7 @@ def read_file(filepath,main_database,dirty_database):#use this function to read 
     returns formatted_RFI_file: The dictionary with all of the data formatted and organized. 
     returns header_map: contains all information, not just header
     """
+    
     f = open(filepath, 'r') #open file
     #these are lists containing column values that will be added to the dictionary later:
     data = [] 
@@ -96,7 +98,7 @@ def read_file(filepath,main_database,dirty_database):#use this function to read 
     else:
         header_map = extrapolate_header(f.name)
 
-    header_map["frontend"] = GBT_receiver_specs.FrontendVerification(header_map["frontend"])
+    header_map["frontend"] = rfitrends.GBT_receiver_specs.FrontendVerification(header_map["frontend"])
      
     for data_line in f:
         if data_line == '\n':
@@ -124,9 +126,9 @@ def read_file(filepath,main_database,dirty_database):#use this function to read 
                     validated_frequency = frequency_value
 
 
-                freq_min = GBT_receiver_specs.GBT_receiver_ranges[header["frontend"]]['freq_min']
-                freq_max = GBT_receiver_specs.GBT_receiver_ranges[header["frontend"]]['freq_max']
-                if GBT_receiver_specs.GBT_receiver_ranges[header["frontend"]] == "Unknown": 
+                freq_min = rfitrends.GBT_receiver_specs.GBT_receiver_ranges[header["frontend"]]['freq_min']
+                freq_max = rfitrends.GBT_receiver_specs.GBT_receiver_ranges[header["frontend"]]['freq_max']
+                if rfitrends.GBT_receiver_specs.GBT_receiver_ranges[header["frontend"]] == "Unknown": 
                     freq_buffer = 0
                 else:
                     buffer_factor = .1
@@ -346,38 +348,54 @@ def ReadFileLine_ColumnValues(has_header,line_value: list,column_names,filepath)
     
     return(window_value,channel_value,frequency_value,intensity_value,overlapping)
 
+def get_username_and_password():
+    
+    while True:
+        try:
+            username = input("Please enter SQL database username: ")
+            password = getpass.getpass("Please enter the password: ",stream=None)
+            return(username,password)
+        except:
+            print("Incorrect username or password. Please try again.")
+
 
 def write_to_database(main_database,dirty_database,path,files_to_process = "all"):
 
     list_o_paths = []
     list_o_structs = []
 
+    if files_to_process == "all":
     # making a list of all of the .txt files in the directory so I can just cycle through each full path:
-    for filename in os.listdir(path):
-        if filename.endswith(".txt") and filename != "URLs.txt":# If the files are ones we are actually interested in
-            list_o_paths.append(os.path.join(path,filename))
-            continue
+        for filename in os.listdir(path):
+            if filename.endswith(".txt") and filename != "URLs.txt":# If the files are ones we are actually interested in
+                list_o_paths.append(os.path.join(path,filename))
+                continue
+    else: 
+        # For each file in the path given
+        for filename in os.listdir(path):
+            # If there is any element from files_to_process contained in the current filename, it is a file to process. I.E. if "TRFI_052819_L1" is 
+            # An element in files_to_process, and filename is "TRFI_052819_L1_rfiscan1_s0001_f001_Linr_az357_el045.txt" then it will be included as a file to process
+            if any(RFI_file in filename for RFI_file in files_to_process):
+                list_o_paths.append(os.path.join(path,filename))
+
+    username,password = get_username_and_password()
 
 
-    username = input("Please enter SQL database username: ")
-
-    password = getpass.getpass("Please enter the password: ",stream=None)
-
-    cnx = mysql.connector.connect(user=username, password=password,
+    cnx = connector.connect(user=username, password=password,
                                 host='192.33.116.22',
                                 database='jskipper')
     cursor = cnx.cursor()
 
     print("gathering filename set...")
 
-    unique_filename = fxns_output_process.gather_list(cursor, "SELECT DISTINCT filename FROM "+main_database)
+    unique_filename = rfitrends.fxns_output_process.gather_list(cursor, "SELECT DISTINCT filename FROM "+main_database)
 
 
     #going thru each file one by one
     print("starting to upload files one by one...")
     for filenum,filepath in enumerate(list_o_paths):
         print("Extracting file "+str(filenum+1)+" of "+str(len(list_o_paths))+", filename: "+str(filepath))
-        filename = filepath.split("/")[7]
+        filename = filepath.split("/")[-1]
         #print(filename)
         #print(unique_filename[filenum])
         if filename in unique_filename:
@@ -388,31 +406,6 @@ def write_to_database(main_database,dirty_database,path,files_to_process = "all"
         formatted_RFI_file = read_file(filepath,main_database,dirty_database)
 
         with open('/users/jskipper/Documents/scripts/RFI/test_writing_files/test_file_'+filename, 'w') as writer:
-            writer.write("################ HEADER #################\n")
-            writer.write("# projid: "+str(formatted_RFI_file.get("projid"))+"\n")
-            writer.write("# date: "+str(formatted_RFI_file.get("date"))+"\n")
-            writer.write("# utc (hrs): "+str(formatted_RFI_file.get("utc (hrs)"))+"\n")
-            writer.write("# mjd: "+str(formatted_RFI_file.get("mjd"))+"\n")
-            writer.write("# lst (hrs): "+str(formatted_RFI_file.get("lst (hrs)"))+"\n")
-            try: 
-                writer.write("# scan_number: "+str(formatted_RFI_file.get("scan_number"))+"\n")
-            except (TypeError):
-                writer.write("# scan_number: "+str(formatted_RFI_file.get("scan_numbers"))+"\n")
-            writer.write("# frontend: "+str(formatted_RFI_file.get("frontend"))+"\n")
-            writer.write("# feed: "+str(formatted_RFI_file.get("feed"))+"\n")
-            writer.write("# polarization: "+str(formatted_RFI_file.get("polarization"))+"\n")
-            writer.write("# backend: "+str(formatted_RFI_file.get("backend"))+"\n")
-            writer.write("# number_IF_Windows: "+str(formatted_RFI_file.get("number_IF_Windows"))+"\n")
-            writer.write("# exposure (sec): "+str(formatted_RFI_file.get("exposure (sec)"))+"\n")
-            writer.write("# tsys (K): "+str(formatted_RFI_file.get("tsys (K)"))+"\n")
-            writer.write("# frequency_type: "+str(formatted_RFI_file.get("frequency_type"))+"\n")
-            writer.write("# frequency_resolution (MHz): "+str(formatted_RFI_file.get("frequency_resolution (MHz)"))+"\n")
-            writer.write("# source: "+str(formatted_RFI_file.get("source"))+"\n")
-            writer.write("# azimuth (deg): "+str(formatted_RFI_file.get("azimuth (deg)"))+"\n")
-            writer.write("# elevation (deg): "+str(formatted_RFI_file.get("elevation (deg)"))+"\n")
-            writer.write("# units: "+str(formatted_RFI_file.get("units"))+"\n")
-            writer.write("################   Data  ################\n")
-            writer.write("# IFWindow   Channel Frequency(MHz)  Intensity(Jy)\n")
             for data_entry in formatted_RFI_file.get("Data"):#for each value in that multi-valued set
                 writer.write("         "+str(data_entry[0]+"         "+str(data_entry[1]+"         "+str(data_entry[2]+"         "+str(data_entry[3]+"\n")))))
                 add_values = "INSERT INTO "+str(data_entry[5])+" (feed,frontend,`azimuth (deg)`,projid,`resolution (MHz)`,Window,exposure,utc_hrs,date,number_IF_Windows,Channel,backend,mjd,Frequency_MHz,lst,filename,polarization,source,tsys,frequency_type,units,Intensity_Jy,scan_number,`elevation (deg)`) VALUES (\""+str(formatted_RFI_file.get("feed"))+"\",\""+str(formatted_RFI_file.get("frontend"))+"\",\""+str(formatted_RFI_file.get("azimuth (deg)"))+"\",\""+str(formatted_RFI_file.get("projid"))+"\",\""+str(formatted_RFI_file.get("frequency_resolution (MHz)"))+"\",\""+str(data_entry[0])+"\",\""+str(formatted_RFI_file.get("exposure (sec)"))+"\",\""+str(formatted_RFI_file.get("utc (hrs)"))+"\",\""+str(formatted_RFI_file.get("date"))+"\",\""+str(formatted_RFI_file.get("number_IF_Windows"))+"\",\""+str(data_entry[1])+"\",\""+str(formatted_RFI_file.get("backend"))+"\",\""+str(formatted_RFI_file.get("mjd"))+"\",\""+str(data_entry[2])+"\",\""+str(formatted_RFI_file.get("lst (hrs)"))+"\",\""+str(formatted_RFI_file.get("filename"))+"\",\""+str(formatted_RFI_file.get("polarization"))+"\",\""+str(formatted_RFI_file.get("source"))+"\",\""+str(formatted_RFI_file.get("tsys"))+"\",\""+str(formatted_RFI_file.get("frequency_type"))+"\",\""+str(formatted_RFI_file.get("units"))+"\",\""+str(data_entry[3])+"\",\""+str(formatted_RFI_file.get("scan_number"))+"\",\""+str(formatted_RFI_file.get("elevation (deg)"))+"\");"

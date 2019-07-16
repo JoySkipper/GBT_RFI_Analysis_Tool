@@ -4,7 +4,9 @@
 .. moduleauthor:: Joy Skipper <jskipper@nrao.edu>
 """
 
-import pymysql.connect
+from pymysql import connect
+#import pymysql.connect
+from pymysql import cursors
 from pymysql.cursors import Cursor
 
 def gather_list(cursor: Cursor,query):
@@ -35,7 +37,7 @@ def connect_to_database():
     """
     username = input("Please enter SQL database username... ")
     password = input("Please enter SQL database password... ")
-    cnx = pymysql.connect(user=username, password=password,
+    cnx = connect(user=username, password=password,
                                 host='192.33.116.22',
                                 database='jskipper')
     #cnx is connecting to the sql database
