@@ -2,6 +2,7 @@
 .. module:: RFI_process_graph_avgs.py
     :synopsis: To take the data from the SQL-Avgs database and make appropriate graphs for display
 .. moduleauthor:: Joy Skipper <jskipper@nrao.edu>
+Code Origin: https://github.com/JoySkipper/GBT_RFI_Analysis_Tool
 """
 
 import pymysql

@@ -2,6 +2,7 @@
 .. module:: fxns_output_process.py
     :synopsis: To compile small functions to be used in processing data from the SQL database
 .. moduleauthor:: Joy Skipper <jskipper@nrao.edu>
+Code Origin: https://github.com/JoySkipper/GBT_RFI_Analysis_Tool
 """
 
 from pymysql import connect

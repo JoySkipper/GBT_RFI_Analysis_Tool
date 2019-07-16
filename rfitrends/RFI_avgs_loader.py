@@ -2,6 +2,7 @@
 .. module:: RFI_avgs_loader.py
     :synopsis: To perform statistical analysis on an RFI mySQL database
 .. moduleauthor:: Joy Skipper <jskipper@nrao.edu>
+Code Origin: https://github.com/JoySkipper/GBT_RFI_Analysis_Tool
 """
 
 import csv

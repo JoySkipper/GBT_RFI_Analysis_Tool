@@ -1,3 +1,8 @@
+# Origin: 
+The current version of this code lives on Joy Skipper's Github: 
+https://github.com/JoySkipper/GBT_RFI_Analysis_Tool
+
+
 # How to run the GBT RFI Analysis Tool
 
 The GBT RFI Analysis tool is meant, at least at the moment, to be run specifically on GBT RFI through the jskipper database on the colossus machine at the Green Bank Observatory. Therefore, the credentials for jskipper and a connection to the GBO machines is needed for the code to work. The hope is to eventually have this code be more generalized, such that an SQL database can be made and used in any setting from any machine. This documentation will be updated accordingly when this occurs. 
