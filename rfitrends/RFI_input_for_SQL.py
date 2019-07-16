@@ -99,6 +99,7 @@ def read_file(filepath,main_database,dirty_database):#use this function to read 
         header_map = extrapolate_header(f.name)
 
     header_map["frontend"] = rfitrends.GBT_receiver_specs.FrontendVerification(header_map["frontend"])
+    header_map["filename"] = filepath.split("/")[-1]
      
     for data_line in f:
         if data_line == '\n':
@@ -348,13 +349,18 @@ def ReadFileLine_ColumnValues(has_header,line_value: list,column_names,filepath)
     
     return(window_value,channel_value,frequency_value,intensity_value,overlapping)
 
-def get_username_and_password():
+def prompt_user_login_to_database(IP_address, database):
     
     while True:
         try:
+            print("Connecting to database: " + str(database) + " on host: " + str(IP_address))
             username = input("Please enter SQL database username: ")
             password = getpass.getpass("Please enter the password: ",stream=None)
-            return(username,password)
+            connector.connect(user=username, password=password,
+                                host=IP_address,
+                                database=database)
+            #cursor = cnx.cursor()
+            return(username, password)
         except:
             print("Incorrect username or password. Please try again.")
 
@@ -378,13 +384,14 @@ def write_to_database(main_database,dirty_database,path,files_to_process = "all"
             if any(RFI_file in filename for RFI_file in files_to_process):
                 list_o_paths.append(os.path.join(path,filename))
 
-    username,password = get_username_and_password()
-
-
+    IP_address = '192.33.116.22'
+    database = 'jskipper'
+    username, password = prompt_user_login_to_database(IP_address,database)
     cnx = connector.connect(user=username, password=password,
-                                host='192.33.116.22',
-                                database='jskipper')
+                        host=IP_address,
+                        database=database)
     cursor = cnx.cursor()
+
 
     print("gathering filename set...")
 
