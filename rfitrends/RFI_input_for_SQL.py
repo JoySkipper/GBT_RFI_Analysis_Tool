@@ -2,6 +2,7 @@
 .. module:: RFI_input_for_SQL.py
     :synopsis: To read in multiple types of ascii files containing RFI data across several decades. Then output in a form usable by a mySQL database.
 .. moduleauthor:: Joy Skipper <jskipper@nrao.edu>
+Code Origin: https://github.com/JoySkipper/GBT_RFI_Analysis_Tool
 """
 
 import numpy as np

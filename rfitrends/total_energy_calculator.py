@@ -2,6 +2,7 @@
 .. module:: total_energy_calculator.py
     :synopsis: Calculates the total energy of the entire frequency range for an RFI mySQL database
 .. moduleauthor:: Joy Skipper <jskipper@nrao.edu>
+Code Origin: https://github.com/JoySkipper/GBT_RFI_Analysis_Tool
 """
 
 import numpy as np
