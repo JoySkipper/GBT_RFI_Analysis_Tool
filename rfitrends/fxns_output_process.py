@@ -23,7 +23,7 @@ def gather_list(cursor: Cursor,query):
     row = cursor.fetchone() #getting each row
  
     while row is not None:
-        value_list.append(float(row[0]))
+        value_list.append(row[0])
         row = cursor.fetchone()
 
     return(value_list)
