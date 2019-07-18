@@ -20,6 +20,7 @@ import getpass
 import rfitrends.GBT_receiver_specs
 import sys
 import rfitrends.fxns_output_process
+import argparse
 
 class FreqOutsideRcvrBoundsError(Exception):
     pass
@@ -426,15 +427,17 @@ if __name__ == "__main__":
     import ptvsd 
     # Allow other computers to attach to ptvsd at this IP address and port. 
     ptvsd.enable_attach(address=('10.16.96.210', 3001), redirect_output=True) 
-    # # Pause the program until a remote debugger is attached 
-    print("Waiting for debugger attach...") 
-    #ptvsd.wait_for_attach()
-    main_table = sys.argv[1]
-    dirty_table = sys.argv[2]
+    parser = argparse.ArgumentParser(description="Takes .txt files of RFI data and uploads them to the given database")
+    parser.add_argument("main_table",help="The string name of the table to which you'd like to upload your clean RFI data")
+    parser.add_argument("dirty_table",help="The string name of the table to which you'd like to upload your flagged or bad RFI data")
+    parser.add_argument("path",help="The path to the .txt files that need to be uploaded to the database")
+    args = parser.parse_args()
+    main_table = args.main_table
+    dirty_table = args.dirty_table
     #print(main_database)
     #print(dirty_database)
     #path = '/home/www.gb.nrao.edu/content/IPG/rfiarchive_files/GBTDataImages'
-    path = sys.argv[3]
+    path = args.path
     #path = '/users/jskipper/Documents/scripts/RFI/problem_files/single_line_test/'
     IP_address = '192.33.116.22'
     database = 'jskipper'
