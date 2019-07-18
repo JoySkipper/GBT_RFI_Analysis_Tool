@@ -366,10 +366,9 @@ def prompt_user_login_to_database(IP_address, database):
             print("Incorrect username or password. Please try again.")
 
 
-def write_to_database(main_database,dirty_database,path,files_to_process = "all"):
+def write_to_database(username,password,IP_address,database,main_table,dirty_table,path,files_to_process = "all"):
 
     list_o_paths = []
-    list_o_structs = []
 
     if files_to_process == "all":
     # making a list of all of the .txt files in the directory so I can just cycle through each full path:
@@ -385,9 +384,8 @@ def write_to_database(main_database,dirty_database,path,files_to_process = "all"
             if any(RFI_file in filename for RFI_file in files_to_process):
                 list_o_paths.append(os.path.join(path,filename))
 
-    IP_address = '192.33.116.22'
-    database = 'jskipper'
-    username, password = prompt_user_login_to_database(IP_address,database)
+
+    
     cnx = connector.connect(user=username, password=password,
                         host=IP_address,
                         database=database)
@@ -396,7 +394,7 @@ def write_to_database(main_database,dirty_database,path,files_to_process = "all"
 
     print("gathering filename set...")
 
-    unique_filename = rfitrends.fxns_output_process.gather_list(cursor, "SELECT DISTINCT filename FROM "+main_database)
+    unique_filename = rfitrends.fxns_output_process.gather_list(cursor, "SELECT DISTINCT filename FROM "+main_table)
 
 
     #going thru each file one by one
@@ -411,7 +409,7 @@ def write_to_database(main_database,dirty_database,path,files_to_process = "all"
             continue
         #input("stopping")
         
-        formatted_RFI_file = read_file(filepath,main_database,dirty_database)
+        formatted_RFI_file = read_file(filepath,main_table,dirty_table)
 
         with open('/users/jskipper/Documents/scripts/RFI/test_writing_files/test_file_'+filename, 'w') as writer:
             for data_entry in formatted_RFI_file.get("Data"):#for each value in that multi-valued set
@@ -431,14 +429,17 @@ if __name__ == "__main__":
     # # Pause the program until a remote debugger is attached 
     print("Waiting for debugger attach...") 
     #ptvsd.wait_for_attach()
-    main_database = sys.argv[1]
-    dirty_database = sys.argv[2]
+    main_table = sys.argv[1]
+    dirty_table = sys.argv[2]
     #print(main_database)
     #print(dirty_database)
     #path = '/home/www.gb.nrao.edu/content/IPG/rfiarchive_files/GBTDataImages'
     path = sys.argv[3]
     #path = '/users/jskipper/Documents/scripts/RFI/problem_files/single_line_test/'
-    write_to_database(main_database,dirty_database,path)
+    IP_address = '192.33.116.22'
+    database = 'jskipper'
+    username, password = prompt_user_login_to_database(IP_address,database)
+    write_to_database(username, password, IP_address, database, main_table,dirty_table,path)
 
 
         
