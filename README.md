@@ -62,6 +62,7 @@ Run as:
 ```console
 RFI_avgs_loader.py <table_to_read> <table_to_make> 
 ```
+Where table_to_read is the table from which you want to calculate statistics (likely main_table_name from step 1) and table_to_make is the table you want to make that will contain the statistics calculated. 
 
 ## Step 3: Process_graph_avgs.py
 
@@ -72,6 +73,7 @@ Run as:
 ```console
 RFI_process_graph_avgs.py <avgs_table_to_read>
 ```
+Where avgs_table_to_read is the table containing statistics from which you want to make plots (likely table_to_make from step 2). 
 
 ## Step 4: total_energy_calculator.py
 
@@ -82,7 +84,7 @@ Run as:
 ```console
 total_energy_calculatory.py <full_data_table> <avgs_data_table>
 ```
-
+Where full_data_table is the table containing all RFI data from which you want to calculate the total energy (likely main_table_name from step 1) and avgs_data_table is the table containing all the RFI statistics from which you want to calculate the total energy (likely table_to_make from step 2). 
 
 
 ## Acknowledgements:
