@@ -3,7 +3,7 @@ A tool to analyze radio frequency interference data taken from the Green Bank Te
 
 ### Note: 
 
-The main general-use purpose of this code is in step 1, where the data is parsed and loaded into an SQL database. From there one can query the SQL database for whatever they like. Steps 2 onward calculate and graph some general-purpose statistics on the data which might be of use to those trying to characterize the RFI environment of their sample. You could also use SQL to create a subset of your data to then calculate statistics on using Steps 2 onwards.
+The main general-use purpose of this code is in step 1, where the GBT RFI data are parsed and loaded into an SQL database. From there one can query the SQL database for whatever they like. Steps 2 onward calculate and graph some general-purpose statistics on the data which might be of use to those trying to characterize the RFI environment of their sample. One could also use SQL to create a subset of your data to then calculate statistics on using Steps 2 onwards.
 
 ## Step 1: Load RFI data into the database: 
 
