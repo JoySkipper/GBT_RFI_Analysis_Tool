@@ -7,7 +7,6 @@ Code Origin: https://github.com/JoySkipper/GBT_RFI_Analysis_Tool
 
 import numpy as np
 import math
-import rfitrends.fxns_output_process
 import pymysql
 import random
 import csv
