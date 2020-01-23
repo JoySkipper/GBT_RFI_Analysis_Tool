@@ -5,7 +5,7 @@ https://github.com/JoySkipper/GBT_RFI_Analysis_Tool
 
 # How to run the GBT RFI Analysis Tool
 
-The GBT RFI Analysis tool is meant, at least at the moment, to be run specifically on GBT RFI through the jskipper database on the colossus machine at the Green Bank Observatory. Therefore, the credentials for jskipper and a connection to the GBO machines is needed for the code to work. The hope is to eventually have this code be more generalized, such that an SQL database can be made and used in any setting from any machine. This documentation will be updated accordingly when this occurs. 
+The GBT RFI Analysis tool is meant, at least at the moment, to be run specifically on GBT RFI through an SQL database at the Green Bank Observatory. 
 
 ## RFI_input_for_SQL.py
 
@@ -16,7 +16,7 @@ LST_calculator.py
 
 Run as: 
 ```console
-RFI_input_for_SQL.py <main_table_name> <dirty_table_name> <filepath_to_RFI_scans>
+RFI_input_for_SQL.py <main_table_name> <dirty_table_name> <filepath_to_RFI_scans> <database_IP> <database_name>
 ```
 
 Where main_table_name is the name of the table to which you want to put all of your clean data. This should already exist in the jskipper database with all of the column names already filled for the script to work. 
@@ -59,7 +59,9 @@ Filepath_to_RFI_scans is the path to the RFI scans that you wish to use to load 
   ```
 Where Intensity can be either a NaN or a float.
 
-You will be prompted for the username and password of the user on the colossus machine that holds these tables. It will then load the appropriate information into the tables. 
+Database_IP is the IP address of the location of your SQL database. You will need an SQL database created for this to run. Database_name is the name of that same SQL database. 
+
+You will be prompted for the username and password of the user on the machine that holds the database of choice. It will then load the appropriate information into the tables. 
 
 Once these are loaded, you'll need to export this database to a .txt file via phpMyAdmin before continuing. 
 
