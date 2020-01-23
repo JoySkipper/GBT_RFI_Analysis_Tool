@@ -431,20 +431,25 @@ if __name__ == "__main__":
     import ptvsd 
     # Allow other computers to attach to ptvsd at this IP address and port. 
     ptvsd.enable_attach(address=('10.16.96.210', 3001), redirect_output=True) 
+    # Adding in-line arguments:
     parser = argparse.ArgumentParser(description="Takes .txt files of RFI data and uploads them to the given database")
     parser.add_argument("main_table",help="The string name of the table to which you'd like to upload your clean RFI data")
     parser.add_argument("dirty_table",help="The string name of the table to which you'd like to upload your flagged or bad RFI data")
     parser.add_argument("path",help="The path to the .txt files that need to be uploaded to the database")
+    parser.add_argument("IP_address",nargs='?',default= '192.33.116.22',help="The IP address to find the SQL database to which you would like to add this table. Default is the GBO development server address. This would only work for employees.")
+    parser.add_argument("database",nargs='?',default='jskipper',help="The name of the SQL database to which you would like to add this table. Default is jskipper, which would only work for employees.")
     args = parser.parse_args()
     main_table = args.main_table
     dirty_table = args.dirty_table
+    IP_address = args.IP_address
+    database = args.database
     #print(main_database)
     #print(dirty_database)
     #path = '/home/www.gb.nrao.edu/content/IPG/rfiarchive_files/GBTDataImages'
     path = args.path
     #path = '/users/jskipper/Documents/scripts/RFI/problem_files/single_line_test/'
-    IP_address = '192.33.116.22'
-    database = 'jskipper'
+    #IP_address = '192.33.116.22'
+    #database = 'jskipper'
     username, password = prompt_user_login_to_database(IP_address,database)
     write_to_database(username, password, IP_address, database, main_table,dirty_table,path)
 
