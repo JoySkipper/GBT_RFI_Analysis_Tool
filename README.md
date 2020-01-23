@@ -1,6 +1,10 @@
 # GBT_RFI_Analysis_Tool
 A tool to analyze radio frequency interference data taken from the Green Bank Telescope
 
+### Note: 
+
+The main general-use purpose of this code is in step 1, where the data is parsed and loaded into an SQL database. From there one can query the SQL database for whatever they like. Steps 2 onward calculate and graph some general-purpose statistics on the data which might be of use to those trying to characterize the RFI environment of their sample. You could also use SQL to create a subset of your data to then calculate statistics on using Steps 2 onwards.
+
 ## Step 1: Load RFI data into the database: 
 
 Run RFI_input_for_SQL.py with the text files that you wish to use in the path.
@@ -51,6 +55,7 @@ Where main_table_name is the name you wish to give for your SQL table containing
 Where Intensity can be either a NaN or a float. 
 
 </details> 
+
 
 ## Step 2: Load statistical data using RFI_avgs_loader.py
 
