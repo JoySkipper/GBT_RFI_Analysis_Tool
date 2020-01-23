@@ -49,11 +49,8 @@ def calculate_avgs_load_into_database(table_to_read,table_to_make):
                 high_percentile_intensity = np.percentile(cached_intensity,97.5)
                 print("progress: "+str((index*100.0)/14000000.0)+"%")
 
-                #try: 
                 add_values = "INSERT INTO "+str(table_to_make)+" (Frequency,mean_intensity,max_intensity,min_intensity,median_intensity,low_percentile_intensity,high_percentile_intensity) VALUES (\""+f"{cached_frequency:.6f}"+"\",\""+str(average_intensity)+"\",\""+str(max_intensity)+"\",\""+str(min_intensity)+"\",\""+str(median_intensity)+"\",\""+str(low_percentile_intensity)+"\",\""+str(high_percentile_intensity)+"\")"
         
-                    
-
                 #creating SQL table of RFI_Avgs
                 cursor.execute(add_values)
 
@@ -67,8 +64,6 @@ def calculate_avgs_load_into_database(table_to_read,table_to_make):
 	
 
 if __name__ == "__main__":
-    #table_to_read = "Ryans_RFI_table_expanded_f_i_sorted.txt"
-    #table_to_make = "RFI_Avgs_expanded"
     table_to_read = sys.argv[1]
     table_to_make = sys.argv[2]
     calculate_avgs_load_into_database(table_to_read,table_to_make)
