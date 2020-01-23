@@ -10,8 +10,9 @@ Run as:
 RFI_input_for_SQL.py <main_table_name> <dirty_table_name> <filepath_to_RFI_scans>
 ```
 
+Where main_table_name is the name you wish to give for your SQL table containing your primary, clean data. Dirty_table_name is the name you wish to give for your SQL table containing any data the uploader finds that has flags or issues. Filepath_to_RFI_scans is the file path given to the directory containing all the text files of RFI scans you wish to analyze. 
 
-<details><summary> GBT RFI header format: </summary>
+<details><summary> GBT RFI header format for text files containing RFI data: </summary>
 
 
 
@@ -61,6 +62,7 @@ Run as:
 ```console
 RFI_avgs_loader.py <table_to_read> <table_to_make> 
 ```
+Where table_to_read is the table from which you want to calculate statistics (likely main_table_name from step 1) and table_to_make is the table you want to make that will contain the statistics calculated. 
 
 ## Step 3: Process_graph_avgs.py
 
@@ -71,6 +73,7 @@ Run as:
 ```console
 RFI_process_graph_avgs.py <avgs_table_to_read>
 ```
+Where avgs_table_to_read is the table containing statistics from which you want to make plots (likely table_to_make from step 2). 
 
 ## Step 4: total_energy_calculator.py
 
@@ -81,7 +84,7 @@ Run as:
 ```console
 total_energy_calculatory.py <full_data_table> <avgs_data_table>
 ```
-
+Where full_data_table is the table containing all RFI data from which you want to calculate the total energy (likely main_table_name from step 1) and avgs_data_table is the table containing all the RFI statistics from which you want to calculate the total energy (likely table_to_make from step 2). 
 
 
 ## Acknowledgements:
