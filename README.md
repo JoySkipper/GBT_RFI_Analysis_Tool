@@ -1,5 +1,5 @@
 # GBT_RFI_Analysis_Tool
-A tool to analyze radio frequency interference data taken from the Green Bank Telescope
+A tool to analyze radio frequency interference data taken from the Green Bank Telescope. Assumes that we do not observe at frequencies below 245 MHz. 
 
 ### Note: 
 
