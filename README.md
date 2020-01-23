@@ -7,10 +7,10 @@ Run RFI_input_for_SQL.py with the text files that you wish to use in the path.
 
 Run as: 
 ```console
-RFI_input_for_SQL.py <main_table_name> <dirty_table_name> <filepath_to_RFI_scans>
+RFI_input_for_SQL.py <main_table_name> <dirty_table_name> <filepath_to_RFI_scans> <Database_IP> <Database_name>
 ```
 
-Where main_table_name is the name you wish to give for your SQL table containing your primary, clean data. Dirty_table_name is the name you wish to give for your SQL table containing any data the uploader finds that has flags or issues. Filepath_to_RFI_scans is the file path given to the directory containing all the text files of RFI scans you wish to analyze. 
+Where main_table_name is the name you wish to give for your SQL table containing your primary, clean data. Dirty_table_name is the name you wish to give for your SQL table containing any data the uploader finds that has flags or issues. Filepath_to_RFI_scans is the file path given to the directory containing all the text files of RFI scans you wish to analyze. Database_IP and database_name are the IP address location and name of the database to which you want to upload your processed data. Youl will be prompted for the credentials to access this database. 
 
 <details><summary> GBT RFI header format for text files containing RFI data: </summary>
 
@@ -50,9 +50,7 @@ Where main_table_name is the name you wish to give for your SQL table containing
   ```
 Where Intensity can be either a NaN or a float. 
 
-</details>
-
-Currently, you need the current credentials for jskipper on the colossus dev machine at GBO, but that's being developed so it can be used with any SQL database. 
+</details> 
 
 ## Step 2: Load statistical data using RFI_avgs_loader.py
 
