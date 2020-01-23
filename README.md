@@ -10,8 +10,9 @@ Run as:
 RFI_input_for_SQL.py <main_table_name> <dirty_table_name> <filepath_to_RFI_scans>
 ```
 
+Where main_table_name is the name you wish to give for your SQL table containing your primary, clean data. Dirty_table_name is the name you wish to give for your SQL table containing any data the uploader finds that has flags or issues. Filepath_to_RFI_scans is the file path given to the directory containing all the text files of RFI scans you wish to analyze. 
 
-<details><summary> GBT RFI header format: </summary>
+<details><summary> GBT RFI header format for text files containing RFI data: </summary>
 
 
 
