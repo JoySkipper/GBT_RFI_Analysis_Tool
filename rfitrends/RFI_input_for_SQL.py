@@ -15,7 +15,6 @@ import julian
 import datetime
 import rfitrends.LST_calculator
 from mysql import connector
-#import mysql.connector
 import getpass
 import rfitrends.GBT_receiver_specs
 import sys
@@ -55,7 +54,7 @@ def read_file(filepath,main_database,dirty_database):#use this function to read 
             # Dict of header fields and values
             header = {}
             previous_line_position = f.tell()
-            # Stupid Python no do while...
+            # emulating a do while loop because it doesn't exist in Python
             line = f.readline()
             # Read the file
             while line:
@@ -91,7 +90,7 @@ def read_file(filepath,main_database,dirty_database):#use this function to read 
                     f.seek(previous_line_position)
                     break
 
-                # Stupid Python no do while
+                # Again emulating a do while loop
                 previous_line_position = f.tell()
                 line = f.readline()
 
@@ -100,7 +99,9 @@ def read_file(filepath,main_database,dirty_database):#use this function to read 
     else:
         header_map = extrapolate_header(f.name)
 
+    # Verifies that frontend given exists, otherwise labels it as Unknown. 
     header_map["frontend"] = rfitrends.GBT_receiver_specs.FrontendVerification(header_map["frontend"])
+    # Pulls filename from full path to filename
     header_map["filename"] = filepath.split("/")[-1]
      
     for data_line in f:
@@ -122,7 +123,7 @@ def read_file(filepath,main_database,dirty_database):#use this function to read 
                 :param header_information: the dictionary made with header information for each file 
                 :returns validated_frequency: the validated frequency value
                 """
-
+                # Makes the assumption that we're not observing below 245 MHz
                 if float(frequency_value) < 245.0: # Converting all GHz values to MHz
                     validated_frequency = str(float(frequency_value) * 1000.0)
                 else:
@@ -131,10 +132,14 @@ def read_file(filepath,main_database,dirty_database):#use this function to read 
 
                 freq_min = rfitrends.GBT_receiver_specs.GBT_receiver_ranges[header["frontend"]]['freq_min']
                 freq_max = rfitrends.GBT_receiver_specs.GBT_receiver_ranges[header["frontend"]]['freq_max']
+
+                # If we don't know the receiver, then we can't give a required frequency range.
                 if rfitrends.GBT_receiver_specs.GBT_receiver_ranges[header["frontend"]] == "Unknown": 
                     freq_buffer = 0
                 else:
                     buffer_factor = .1
+                    # If we do know the receiver, then we take the range of that receiver and allow 1/10th of that range on either end to be included for
+                    # That receiver
                     freq_buffer = (freq_max - freq_min)* buffer_factor
                 if float(validated_frequency) < (freq_min - freq_buffer) or float(validated_frequency) > (freq_max + freq_buffer):
                     raise FreqOutsideRcvrBoundsError
@@ -143,6 +148,7 @@ def read_file(filepath,main_database,dirty_database):#use this function to read 
             database.append(main_database)
             database_value = main_database
             
+        # IF we do get frequencies outside of the bounds that we want, we put it into the dirty table. 
         except FreqOutsideRcvrBoundsError:
             database.append(dirty_database)
             database_value = dirty_database
@@ -338,15 +344,8 @@ def ReadFileLine_ColumnValues(has_header,line_value: list,column_names,filepath)
         window_value = "NaN"
         channel_value = "NaN"
 
-    else:    
-        print("there is a problem. The file reader could not parse this file. Please look at the file format and try again.")
-        print("this is the filepath:\n")
-        print(filepath)
-        print("these are the column names:\n")
-        print(column_names)
-        print("this is the line in the file that this file parser broke on:\n")
-        print(line_value)                
-        input()#this is just to make the code stop
+    else:               
+        raise SystemExit("There is a problem. The file reader could not parse a file. Please look at the file format and try again. \n This is the filepath: "+str(filepath)+"\n These are the column names: "+str(column_names)+"\n This is the line that the file parser broke on: "+str(line_value))
 
     
     return(window_value,channel_value,frequency_value,intensity_value,overlapping)
@@ -403,12 +402,9 @@ def write_to_database(username,password,IP_address,database,main_table,dirty_tab
     for filenum,filepath in enumerate(list_o_paths):
         print("Extracting file "+str(filenum+1)+" of "+str(len(list_o_paths))+", filename: "+str(filepath))
         filename = filepath.split("/")[-1]
-        #print(filename)
-        #print(unique_filename[filenum])
         if filename in unique_filename:
             print("File already exists in database, moving on to next file.")
             continue
-        #input("stopping")
         
         formatted_RFI_file = read_file(filepath,main_table,dirty_table)
 
@@ -443,13 +439,9 @@ if __name__ == "__main__":
     dirty_table = args.dirty_table
     IP_address = args.IP_address
     database = args.database
-    #print(main_database)
-    #print(dirty_database)
+    # The likely path to use if looking at most recent (last 6 months) of RFI data for GBT:
     #path = '/home/www.gb.nrao.edu/content/IPG/rfiarchive_files/GBTDataImages'
     path = args.path
-    #path = '/users/jskipper/Documents/scripts/RFI/problem_files/single_line_test/'
-    #IP_address = '192.33.116.22'
-    #database = 'jskipper'
     username, password = prompt_user_login_to_database(IP_address,database)
     write_to_database(username, password, IP_address, database, main_table,dirty_table,path)
 
