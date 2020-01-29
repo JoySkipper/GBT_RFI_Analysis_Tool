@@ -1,22 +1,18 @@
 # GBT_RFI_Analysis_Tool
 A tool to analyze radio frequency interference data taken from the Green Bank Telescope. Assumes that we do not observe at frequencies below 245 MHz. 
 
-### Note: 
+## Installation Requirements:
 
-The main general-use purpose of this code is in step 1, where the GBT RFI data are parsed and loaded into an SQL database. From there one can query the SQL database for whatever they like. Steps 2 onward calculate and graph some general-purpose statistics on the data which might be of use to those trying to characterize the RFI environment of their sample. One could also use SQL to create a subset of your data to then calculate statistics on using Steps 2 onwards.
+Python 3.5+
 
-## Step 1: Load RFI data into the database: 
+All dependencies are included in the setup.py
 
-Run RFI_input_for_SQL.py with the text files that you wish to use in the path.
 
-Run as: 
-```console
-RFI_input_for_SQL.py <main_table_name> <dirty_table_name> <filepath_to_RFI_scans> <Database_IP> <Database_name>
-```
+## Prerequisites:
 
-Where main_table_name is the name you wish to give for your SQL table containing your primary, clean data. Dirty_table_name is the name you wish to give for your SQL table containing any data the uploader finds that has flags or issues. Filepath_to_RFI_scans is the file path given to the directory containing all the text files of RFI scans you wish to analyze. Database_IP and database_name are the IP address location and name of the database to which you want to upload your processed data. Youl will be prompted for the credentials to access this database. 
+1.) You should be in posession of reduced GBT RFI data in .txt format. It can either have a header in the format provided below or no header. Note that there will be less metadata available if the file contains no header. 
 
-<details><summary> GBT RFI header format for text files containing RFI data: </summary>
+<details><summary> GBT RFI format for text files containing RFI data: </summary>
 
 
 
@@ -56,6 +52,33 @@ Where Intensity can be either a NaN or a float.
 
 </details> 
 
+2.) You should have access credentials to an SQL database to which you can upload your RFI data. This includes the database name, the IP address, and any username and password credentials necessary to access it. 
+
+That database will also need to have two tables created, one where you can put your clean RFI data, and one to put any data that gets flagged in the uploading process. These tables should have the structure of the columns in your particular RFI data already created and ready. The requirement of an existing structure is something that will hopefully be removed in future versions. 
+
+### Note: 
+
+The main general-use purpose of this code is in step 1, where the GBT RFI data are parsed and loaded into an SQL database. From there one can query the SQL database for whatever they like. Steps 2 onward calculate and graph some general-purpose statistics on the data which might be of use to those trying to characterize the RFI environment of their sample. One could also use SQL to create a subset of your data to then calculate statistics on using Steps 2 onwards.
+
+## Step 1: Load RFI data into the database: 
+
+Run RFI_input_for_SQL.py with the text files that you wish to use in the path. 
+
+Run as: 
+```console
+RFI_input_for_SQL.py <main_table_name> <dirty_table_name> <filepath_to_RFI_scans> <Database_IP> <Database_name>
+```
+
+The required arguments are as follows:
+
+1.) Main_table_name is the name you wish to give for your SQL table containing your primary, clean data. 
+
+2.) Dirty_table_name is the name you wish to give for your SQL table containing any data the uploader finds that has flags or issues.
+
+3.) Filepath_to_RFI_scans is the file path given to the directory containing all the text files of RFI scans you wish to analyze.
+
+4. & 5.) Database_IP and database_name are the IP address location and name of the database to which you want to upload your processed data. Youl will be prompted for the credentials to access this database. 
+
 
 ## Step 2: Load statistical data using RFI_avgs_loader.py
 
@@ -65,18 +88,26 @@ Run as:
 ```console
 RFI_avgs_loader.py <table_to_read> <table_to_make> 
 ```
-Where table_to_read is the table from which you want to calculate statistics (likely main_table_name from step 1) and table_to_make is the table you want to make that will contain the statistics calculated. 
+
+The required arguments are as follows: 
+
+1.) Table_to_read is the table from which you want to calculate statistics (likely main_table_name from step 1) 
+
+2.) Table_to_make is the table you want to make that will contain the statistics calculated. 
+
 
 ## Step 3: Process_graph_avgs.py
 
 Run this to plot informational graphs on the statistical data calculated from step 2. 
 
-
 Run as: 
 ```console
 RFI_process_graph_avgs.py <avgs_table_to_read>
 ```
-Where avgs_table_to_read is the table containing statistics from which you want to make plots (likely table_to_make from step 2). 
+
+The required argument is as follows:
+
+1.) Avgs_table_to_read is the table containing statistics from which you want to make plots (likely table_to_make from step 2). 
 
 ## Step 4: total_energy_calculator.py
 
@@ -87,7 +118,12 @@ Run as:
 ```console
 total_energy_calculatory.py <full_data_table> <avgs_data_table>
 ```
-Where full_data_table is the table containing all RFI data from which you want to calculate the total energy (likely main_table_name from step 1) and avgs_data_table is the table containing all the RFI statistics from which you want to calculate the total energy (likely table_to_make from step 2). 
+
+The required arguments are as follows: 
+
+1.) Full_data_table is the table containing all RFI data from which you want to calculate the total energy (likely main_table_name from step 1) 
+
+2.) Avgs_data_table is the table containing all the RFI statistics from which you want to calculate the total energy (likely table_to_make from step 2). 
 
 
 ## Acknowledgements:
