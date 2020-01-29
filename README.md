@@ -77,7 +77,9 @@ The required arguments are as follows:
 
 3.) Filepath_to_RFI_scans is the file path given to the directory containing all the text files of RFI scans you wish to analyze.
 
-4. & 5.) Database_IP and database_name are the IP address location and name of the database to which you want to upload your processed data. Youl will be prompted for the credentials to access this database. 
+4.) Database_IP is the IP address location of the database to which you want to upload your processed data.
+
+5.) Database_name is the name of the database to which you want to upload your processed data. You will be prompted for the credentials to access this database. 
 
 
 ## Step 2: Load statistical data using RFI_avgs_loader.py
