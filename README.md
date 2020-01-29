@@ -54,6 +54,8 @@ Where Intensity can be either a NaN or a float.
 
 2.) You should have access credentials to an SQL database to which you can upload your RFI data. This includes the database name, the IP address, and any username and password credentials necessary to access it. 
 
+That database will also need to have two tables created, one where you can put your clean RFI data, and one to put any data that gets flagged in the uploading process. These tables should have the structure of the columns in your particular RFI data already created and ready. The requirement of an existing structure is something that will hopefully be removed in future versions. 
+
 ### Note: 
 
 The main general-use purpose of this code is in step 1, where the GBT RFI data are parsed and loaded into an SQL database. From there one can query the SQL database for whatever they like. Steps 2 onward calculate and graph some general-purpose statistics on the data which might be of use to those trying to characterize the RFI environment of their sample. One could also use SQL to create a subset of your data to then calculate statistics on using Steps 2 onwards.
