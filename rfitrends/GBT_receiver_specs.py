@@ -23,6 +23,7 @@ frontend_aliases = {
     'Rcvr2_3': 'Rcvr2_3',
     'Rcvr4_6': 'Rcvr4_8',
     'Rcvr4_8':'Rcvr4_8',
+    'x':'Rcvr8_10',
     'Rcvr8_1': 'Rcvr8_10',
     'Rcvr8_10':'Rcvr8_10',
     'Rcvr12_': 'Rcvr12_18',
