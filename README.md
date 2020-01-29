@@ -113,7 +113,7 @@ The required argument is as follows:
 
 ## Step 4: total_energy_calculator.py
 
-Run this to calculate the total energy of the frequency range given by the text files in step 1. 
+Run this to calculate the total energy of the frequency range given by the text files in step 1. Note this assumes the area and aperture efficiency of the GBT.
 
 
 Run as: 
