@@ -10,7 +10,7 @@ All dependencies are included in the setup.py
 
 ## Prerequisites:
 
-You should be in posession of reduced GBT RFI data in .txt format. It can either have a header in the format provided below or no header. Note that there will be less metadata available if the file contains no header. 
+1.) You should be in posession of reduced GBT RFI data in .txt format. It can either have a header in the format provided below or no header. Note that there will be less metadata available if the file contains no header. 
 
 <details><summary> GBT RFI format for text files containing RFI data: </summary>
 
@@ -51,6 +51,8 @@ You should be in posession of reduced GBT RFI data in .txt format. It can either
 Where Intensity can be either a NaN or a float. 
 
 </details> 
+
+2.) You should have access credentials to an SQL database to which you can upload your RFI data. This includes the database name, the IP address, and any username and password credentials necessary to access it. 
 
 ### Note: 
 
