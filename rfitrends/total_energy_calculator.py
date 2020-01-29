@@ -4,7 +4,7 @@
 .. moduleauthor:: Joy Skipper <jskipper@nrao.edu>
 Code Origin: https://github.com/JoySkipper/GBT_RFI_Analysis_Tool
 """
-
+ 
 import numpy as np
 import math
 import pymysql
@@ -12,6 +12,7 @@ import random
 import csv
 import sys
 
+# Note: Assumes GBT aperture efficiency (70%) and area of GBT (7853.98 m**2)
 
 def total_NRG_calc(full_data_table,avgs_data_table):
     total_intensity = []
@@ -20,7 +21,7 @@ def total_NRG_calc(full_data_table,avgs_data_table):
     median_intensity = []
     avg_frequency = []
 
-    with open("Ryans_RFI_table_f_i_mjd.csv") as f:
+    with open(full_data_table) as f:
 
         reader=csv.reader(f)
         for index,row in enumerate(reader):
@@ -31,7 +32,7 @@ def total_NRG_calc(full_data_table,avgs_data_table):
         f.close()
 
 
-    with open("RFI_Avgs.csv") as f:
+    with open(avgs_data_table) as f:
 
         reader=csv.reader(f)
         for index,row in enumerate(reader):
@@ -49,6 +50,7 @@ def total_NRG_calc(full_data_table,avgs_data_table):
     print("calculating total flux times delta nu")
     total_flux_times_delta_nu = [a*b for a,b in zip(total_intensity[:-1],np.diff(total_frequency))]
  
+    # multiplying mean flux times delta nu * aperture efficiency (70% for GBT) * area in meters squared for GBT (7842.90 m**2) * conversion constant
     total_NRG_mean = sum(mean_flux_times_delta_nu)*0.70*7853.98*math.pow(10,-26)
     total_NRG_median = sum(median_flux_times_delta_nu)*0.70*7853.98*math.pow(10,-26)
     total_NRG = sum(total_flux_times_delta_nu)*0.70*7853.98*math.pow(10,-26)
