@@ -20,6 +20,8 @@ import rfitrends.GBT_receiver_specs
 import sys
 import rfitrends.fxns_output_process
 import argparse
+import math
+import rfitrends.Column_fixes
 
 class FreqOutsideRcvrBoundsError(Exception):
     pass
@@ -108,8 +110,8 @@ def read_file(filepath,main_database,dirty_database):#use this function to read 
         if data_line == '\n':
             continue
         data_entry = ReadFileLine_ColumnValues(has_header, data_line.strip().split(), header_map['Column names'], f.name)
-        # If Intensity is NaN or overlapping, skip this line, not useful for science
-        if data_entry[3] == "NaN" or data_entry[4]:
+        # If the data was flagged for some reason, skip it. Not useful for science. 
+        if "Flagged" in data_entry.keys():
                 continue
         try:
             def FrequencyVerification(frequency_value,header):
@@ -220,59 +222,6 @@ def extrapolate_header(filepath):
     extrapolated_header['Column names'] = ["Frequency (MHz)","Intensity (Jy)"]
     return(extrapolated_header)
 
-def CheckFor_OverlappingColumns(line_value):
-    """
-    Checks for overlapping columns in a particular line of a file. 
-
-    param line_value: The current line of the file in a raw unaltered string
-
-    returns overlapping: Boolean to determine if there are overlapping columns in a particular line of file
-    returns column_count: the number of columns in the file
-
-    """
-    overlapping = False
-    column_count = 0
-    for column_count,column_value in enumerate(line_value): 
-        if column_value.count(".") == 2:
-            overlapping = True
-            break
-    return overlapping,column_count
-
-def DealWith_Overlapping(column_count,line_value):
-        """
-        when one column value bleeds into another. I.E. your frequency/intensity column is 400.1000.00 meaning a frequency of 400 and a intensity of 1000.0
-        Fixes value based on input from user
-
-        param column_count: number of columns in this particular file
-        param line_value: the string representing the particular line on which there is overlapping
-
-        returns window_value: the value for the "window" column for this line
-        returns channel_value: the value for the "channel" column for this line
-        returns frequency_value: the value for the "frequency" column for this line
-        returns intensity_value: the value for the "intensity" column for this line
-
-        """
-
-        #split_value = int(input("Please input the character number at which the columns need to be split, counting from the left (default is 8): \n") or "8")
-        split_value = 8
-
-
-        if column_count == 0:
-            window_value = (line_value[0][0:split_value])
-            channel_value = (line_value[0][split_value:])
-            frequency_value = (line_value[1])
-            intensity_value = (line_value[2])
-        elif column_count == 1: 
-            window_value = (line_value[0])
-            channel_value = (line_value[1][0:split_value])
-            frequency_value = (line_value[1][split_value:])
-            intensity_value = (line_value[2])    
-        elif column_count ==2: 
-            window_value = (line_value[0])
-            channel_value = (line_value[1])
-            frequency_value = (line_value[2][0:split_value])
-            intensity_value = (line_value[2][split_value:0])
-        return window_value,channel_value,frequency_value,intensity_value
     
 def ReadFileLine_ColumnValues(has_header,line_value: list,column_names,filepath):
     """
@@ -283,72 +232,44 @@ def ReadFileLine_ColumnValues(has_header,line_value: list,column_names,filepath)
     param filepath: the path to this particular file
 
 
-    returns window_value: the value for the "window" column for this line
-    returns channel_value: the value for the "channel" column for this line
-    returns frequency_value: the value for the "frequency" column for this line
-    returns intensity_value: the value for the "intensity" column for this line
-    returns overlapping: a boolean determining if this particular line contains column overlapping
+    returns data_entry: This is a dictionary containing either the column data or one key called "Flagged" which is set to true, an indication to throw away the data.
 
     """
-    # Unfortunately, we first have to check if the columns overlapped with themselves anywhere, such as the frequency values bleeding into intensity values to make 1471.456800.000 which should be 
-    # something like 1471.456 for frequency and 800.000 for intensity or something (these are made up numbers for example only)
-    overlapping,column_count = CheckFor_OverlappingColumns(line_value)
-    if overlapping:
-        print("There is a file you have input that contains a column which has merged into the other. Here is the line: \n")
-        print(line_value)
-        print("Skipping merged line")
-        window_value,channel_value,frequency_value,intensity_value = DealWith_Overlapping(column_count, line_value)
-        return window_value,channel_value,frequency_value,intensity_value,overlapping
-       
-    #now that we know this is a correctly made line, we check which format this file is in, is it 4 columns? 3? What are the values in these columns? 
-    elif (column_names[0] == "Window" or column_names[0] == "IFWindow") and column_names[1] == "Channel" and (column_names[2] == "Frequency(MHz)" or column_names[2] == "Frequency (MHz)") and column_names[3] == "Intensity(Jy)":#4 regular columns
+    # Unfortunately, we first have to check if the column names match the length of the column values. For example, if the columns overlapped with themselves anywhere, such as the frequency values bleeding into intensity values to make 1471.456800.000 which should be 
+    # something like 1471.456 for frequency and 800.000 for intensity or something (these are made up numbers for example only). 
+    if len(column_names) != len(line_value):
+        data_entry = {
+            "Flagged": True,
+        }
+        return data_entry
+    # Next we need to streamline the naming conventions for the columns:    
+    fixed_column_names = []
+    for column_name in column_names:
+        try: 
+            fixed_column_name = rfitrends.Column_fixes.Column_name_corrections(column_name) 
+        except:
+            SystemExit("There is an unrecognized column name "+column_name+". Please check and reformat your file or add it to the list of column names in Column_fixes.py")
+        fixed_column_names.append(fixed_column_name)
+    # We also need to check that Frequency and Intensity exist somewhere in these columns, as they're needed for any science: 
+    if "Frequency_MHz" not in fixed_column_names or "Intensity_Jy" not in fixed_column_names:
+        data_entry = {
+            "Flagged": True,
+        }
+        return data_entry
 
-        window_value = (line_value[0])
-        channel_value = (line_value[1])
-        frequency_value = (line_value[2])
-        intensity_value = (line_value[3])
+    # now that we know this is a correctly made line, we can get the data from the lines: 
+    data_entry  = dict(zip(fixed_column_names,line_value))
 
+    # Finally, we need to throw away this line if Intensity is NaN, as it's not a useful line for science: 
+    intensity_isNaN = math.isnan(float(data_entry["Intensity_Jy"]))
+    if intensity_isNaN:
+        data_entry = {
+            "Flagged": True,
+        }
+        return data_entry
 
-
-    elif (column_names[0] == "Window" or column_names[0] == "IFWindow") and column_names[1] == "Channel" and (column_names[2] == "Frequency(GHz)" or column_names[2] == "Frequency GHz)") and column_names[3] == "Intensity(Jy)":
-        window_value = (line_value[0])
-        channel_value = (line_value[1])
-        frequency_value = (line_value[2])
-        intensity_value = (line_value[3])
-      
-
-
-    elif column_names[0] == "Frequency(MHz)" and column_names[1] == "Intensity(Jy)":#2 regular columns)
-        frequency_value = (line_value[0])
-        intensity_value = (line_value[1])
-        window_value = "NaN"
-        channel_value = "NaN"
- 
-
-    elif column_names[0] == "Channel" and column_names[1] == "Frequency(MHz)" or column_names[1] == "Frequency (MHz)" and column_names[2] == "Intensity(Jy)":#3 regular columns
-        channel_value = (line_value[0])
-        frequency_value = (line_value[1])
-        intensity_value = (line_value[2])
-        window_value = "NaN"
-
-
-    elif column_names[0] == "Channel" and column_names[1] == "Frequency(GHz)" and column_names[2] == "Intensity(Jy)":# 3 columns, but the person decided to put the frequency in GHz, so change back to MHz and add
-        frequency_value = (line_value[1])        
-        channel_value = (line_value[0])
-        intensity_value = (line_value[2])
-        window_value = "NaN"  
-    
-    elif has_header == False:# Finally, if the file does not have a header, it has two columns that are frequency and intensity
-        frequency_value = (line_value[0])
-        intensity_value = (line_value[1])    
-        window_value = "NaN"
-        channel_value = "NaN"
-
-    else:               
-        raise SystemExit("There is a problem. The file reader could not parse a file. Please look at the file format and try again. \n This is the filepath: "+str(filepath)+"\n These are the column names: "+str(column_names)+"\n This is the line that the file parser broke on: "+str(line_value))
-
-    
-    return(window_value,channel_value,frequency_value,intensity_value,overlapping)
+    # Okay, so there's nothing wrong with the line, so we can actually return a normal line: 
+    return data_entry
 
 def prompt_user_login_to_database(IP_address, database):
     
@@ -439,7 +360,7 @@ if __name__ == "__main__":
     dirty_table = args.dirty_table
     IP_address = args.IP_address
     database = args.database
-    # The likely path to use if looking at most recent (last 6 months) of RFI data for GBT:
+    # The likely path to use for filepath_to_rfi_scans if looking at most recent (last 6 months) of RFI data for GBT:
     #path = '/home/www.gb.nrao.edu/content/IPG/rfiarchive_files/GBTDataImages'
     path = args.path
     username, password = prompt_user_login_to_database(IP_address,database)
