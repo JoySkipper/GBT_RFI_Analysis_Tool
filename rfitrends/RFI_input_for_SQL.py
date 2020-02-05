@@ -146,7 +146,7 @@ def read_file(filepath,main_database,dirty_database):#use this function to read 
                 if float(validated_frequency) < (freq_min - freq_buffer) or float(validated_frequency) > (freq_max + freq_buffer):
                     raise FreqOutsideRcvrBoundsError
                 return validated_frequency
-            validated_frequency = FrequencyVerification(data_entry[2],header_map)
+            data_entry["Frequency_MHz"] = FrequencyVerification(data_entry["Frequency_MHz"],header_map)
             database.append(main_database)
             database_value = main_database
             
@@ -154,12 +154,9 @@ def read_file(filepath,main_database,dirty_database):#use this function to read 
         except FreqOutsideRcvrBoundsError:
             database.append(dirty_database)
             database_value = dirty_database
-            validated_frequency = data_entry[2]
-        data_line = list(data_entry)
-        data_line[2] = validated_frequency
-        data_line.append(database_value)
 
-        data.append(data_line)
+        data_entry["Database"] = database_value
+        data.append(data_entry)
 
     header_map['Data'] = data
     return(header_map)
@@ -246,7 +243,7 @@ def ReadFileLine_ColumnValues(has_header,line_value: list,column_names,filepath)
     fixed_column_names = []
     for column_name in column_names:
         try: 
-            fixed_column_name = rfitrends.Column_fixes.Column_name_corrections(column_name) 
+            fixed_column_name = rfitrends.Column_fixes.Column_name_corrections[column_name]
         except:
             SystemExit("There is an unrecognized column name "+column_name+". Please check and reformat your file or add it to the list of column names in Column_fixes.py")
         fixed_column_names.append(fixed_column_name)
@@ -330,9 +327,10 @@ def write_to_database(username,password,IP_address,database,main_table,dirty_tab
         formatted_RFI_file = read_file(filepath,main_table,dirty_table)
 
         # with open('/users/jskipper/Documents/scripts/RFI/test_writing_files/test_file_'+filename, 'w') as writer:
-            for data_entry in formatted_RFI_file.get("Data"):#for each value in that multi-valued set
+        for data_entry in formatted_RFI_file.get("Data"):#for each value in that multi-valued set
             # writer.write("         "+str(data_entry["Window"]+"         "+str(data_entry["Channel"]+"         "+str(data_entry["Frequency_MHz"]+"         "+str(data_entry["Intensity_Jy"]+"\n")))))
-                cursor.execute(add_values)
+            add_values = "INSERT INTO "+str(data_entry["Database"])+" (feed,frontend,`azimuth_deg`,projid,`resolution_MHz`,Window,exposure,utc_hrs,date,number_IF_Windows,Channel,backend,mjd,Frequency_MHz,lst,filename,polarization,source,tsys,frequency_type,units,Intensity_Jy,scan_number,`elevation_deg`) VALUES (\""+str(formatted_RFI_file.get("feed"))+"\",\""+str(formatted_RFI_file.get("frontend"))+"\",\""+str(formatted_RFI_file.get("azimuth (deg)"))+"\",\""+str(formatted_RFI_file.get("projid"))+"\",\""+str(formatted_RFI_file.get("frequency_resolution (MHz)"))+"\",\""+str(data_entry["Window"])+"\",\""+str(formatted_RFI_file.get("exposure (sec)"))+"\",\""+str(formatted_RFI_file.get("utc (hrs)"))+"\",\""+str(formatted_RFI_file.get("date"))+"\",\""+str(formatted_RFI_file.get("number_IF_Windows"))+"\",\""+str(data_entry["Channel"])+"\",\""+str(formatted_RFI_file.get("backend"))+"\",\""+str(formatted_RFI_file.get("mjd"))+"\",\""+str(data_entry["Frequency_MHz"])+"\",\""+str(formatted_RFI_file.get("lst (hrs)"))+"\",\""+str(formatted_RFI_file.get("filename"))+"\",\""+str(formatted_RFI_file.get("polarization"))+"\",\""+str(formatted_RFI_file.get("source"))+"\",\""+str(formatted_RFI_file.get("tsys"))+"\",\""+str(formatted_RFI_file.get("frequency_type"))+"\",\""+str(formatted_RFI_file.get("units"))+"\",\""+str(data_entry["Intensity_Jy"])+"\",\""+str(formatted_RFI_file.get("scan_number"))+"\",\""+str(formatted_RFI_file.get("elevation (deg)"))+"\");"
+            cursor.execute(add_values)
 
         print(str(filename)+" uploaded.")
 
