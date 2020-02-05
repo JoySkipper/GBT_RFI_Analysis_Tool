@@ -346,7 +346,7 @@ def write_to_database(username,password,IP_address,database,main_table,dirty_tab
 if __name__ == "__main__":
     import ptvsd 
     # Allow other computers to attach to ptvsd at this IP address and port. 
-    ptvsd.enable_attach(address=('10.16.96.210', 3001), redirect_output=True) 
+    # ptvsd.enable_attach(address=('10.16.96.210', 3001), redirect_output=True) 
     # Adding in-line arguments:
     parser = argparse.ArgumentParser(description="Takes .txt files of RFI data and uploads them to the given database")
     parser.add_argument("main_table",help="The string name of the table to which you'd like to upload your clean RFI data")
