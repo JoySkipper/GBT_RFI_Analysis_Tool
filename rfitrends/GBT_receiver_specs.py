@@ -45,7 +45,7 @@ frontend_aliases = {
     'P':'RcvrPF_2',
     'L':'Rcvr1_2',
     'S':'Rcvr2_3',
-    'C':'Rcvr4_6',
+    'C':'Rcvr4_8',
     'X':'Rcvr8_10',
     'U':'Rcvr12_18',
     'K':'RcvrArray18_26',
