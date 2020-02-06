@@ -22,6 +22,8 @@ import rfitrends.fxns_output_process
 import argparse
 import math
 import rfitrends.Column_fixes
+import configparser
+from rfitrends.manage_missing_cols import manage_missing_cols
 
 class FreqOutsideRcvrBoundsError(Exception):
     pass
@@ -328,16 +330,17 @@ def write_to_database(username,password,IP_address,database,main_table,dirty_tab
     print("starting to upload files one by one...")
     for filenum,filepath in enumerate(list_o_paths):
         print("Extracting file "+str(filenum+1)+" of "+str(len(list_o_paths))+", filename: "+str(filepath))
-        filename = filepath.split("/")[-1]
+        filename = filepath.split("/")[-1] # Getting filename from last piece in file path
         if filename in unique_filename:
             print("File already exists in database, moving on to next file.")
             continue
         
         formatted_RFI_file = read_file(filepath,main_table,dirty_table)
         # with open('/users/jskipper/Documents/scripts/RFI/test_writing_files/test_file_'+filename, 'w') as writer
-
+        
         for data_entry in formatted_RFI_file.get("Data"):#for each value in that multi-valued set
             # writer.write("         "+str(data_entry["Window"]+"         "+str(data_entry["Channel"]+"         "+str(data_entry["Frequency_MHz"]+"         "+str(data_entry["Intensity_Jy"]+"\n")))))
+            data_entry = manage_missing_cols(data_entry).getdata_entry()
             add_values = "INSERT INTO "+str(data_entry["Database"])+" (feed,frontend,`azimuth_deg`,projid,`resolution_MHz`,Window,exposure,utc_hrs,date,number_IF_Windows,Channel,backend,mjd,Frequency_MHz,lst,filename,polarization,source,tsys,frequency_type,units,Intensity_Jy,scan_number,`elevation_deg`, `Counts`) VALUES (\""+str(formatted_RFI_file.get("feed"))+"\",\""+str(formatted_RFI_file.get("frontend"))+"\",\""+str(formatted_RFI_file.get("azimuth (deg)"))+"\",\""+str(formatted_RFI_file.get("projid"))+"\",\""+str(formatted_RFI_file.get("frequency_resolution (MHz)"))+"\",\""+str(data_entry["Window"])+"\",\""+str(formatted_RFI_file.get("exposure (sec)"))+"\",\""+str(formatted_RFI_file.get("utc (hrs)"))+"\",\""+str(formatted_RFI_file.get("date"))+"\",\""+str(formatted_RFI_file.get("number_IF_Windows"))+"\",\""+str(data_entry["Channel"])+"\",\""+str(formatted_RFI_file.get("backend"))+"\",\""+str(formatted_RFI_file.get("mjd"))+"\",\""+str(data_entry["Frequency_MHz"])+"\",\""+str(formatted_RFI_file.get("lst (hrs)"))+"\",\""+str(formatted_RFI_file.get("filename"))+"\",\""+str(formatted_RFI_file.get("polarization"))+"\",\""+str(formatted_RFI_file.get("source"))+"\",\""+str(formatted_RFI_file.get("tsys"))+"\",\""+str(formatted_RFI_file.get("frequency_type"))+"\",\""+str(formatted_RFI_file.get("units"))+"\",\""+str(data_entry["Intensity_Jy"])+"\",\""+str(formatted_RFI_file.get("scan_number"))+"\",\""+str(formatted_RFI_file.get("elevation (deg)"))+"\",\""+str(data_entry["Counts"])+"\");"
             cursor.execute(add_values)
 
@@ -368,8 +371,9 @@ if __name__ == "__main__":
     database = args.database
     # The likely path to use for filepath_to_rfi_scans if looking at most recent (last 6 months) of RFI data for GBT:
     #path = '/home/www.gb.nrao.edu/content/IPG/rfiarchive_files/GBTDataImages'
-    path = args.path
+    path = args.path   
     username, password = prompt_user_login_to_database(IP_address,database)
+    config = configparser.ConfigParser()
     write_to_database(username, password, IP_address, database, main_table,dirty_table,path)
 
 
