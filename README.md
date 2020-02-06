@@ -56,6 +56,29 @@ Where Intensity can be either a NaN or a float.
 
 That database will also need to have two tables created, one where you can put your clean RFI data, and one to put any data that gets flagged in the uploading process. These tables should have the structure of the columns in your particular RFI data already created and ready. The requirement of an existing structure is something that will hopefully be removed in future versions. 
 
+## Installation Instructions: 
+
+
+### Using pip (recommended):
+
+In the directory you wish to have all of your scripts, type this into the terminal:
+
+ ```
+ git clone https://github.com/JoySkipper/GBT_RFI_Analysis_Tool.git
+ pip install ./GBT_RFI_Analysis_Tool
+ ``` 
+
+### Cloning without pip: 
+
+In the directory where you want to have your scripts, type this into the terminal:
+
+ ```
+ git clone https://github.com/JoySkipper/GBT_RFI_Analysis_Tool.git
+ cd GBT_RFI_Analysis_Tool
+ python setup.py install
+ ```
+
+
 ### Note: 
 
 The main general-use purpose of this code is in step 1, where the GBT RFI data are parsed and loaded into an SQL database. From there one can query the SQL database for whatever they like. Steps 2 onward calculate and graph some general-purpose statistics on the data which might be of use to those trying to characterize the RFI environment of their sample. One could also use SQL to create a subset of your data to then calculate statistics on using Steps 2 onwards.
