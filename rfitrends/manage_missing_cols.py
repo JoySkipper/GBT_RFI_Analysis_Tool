@@ -6,7 +6,8 @@ Code Origin: https://github.com/JoySkipper/GBT_RFI_Analysis_Tool
 """
 
 class manage_missing_cols: 
-
+    # Takes in data_entry, a dictionary containing the data for a single line of RFI data
+    
     def __init__(self, data_entry):
         self.data_entry = data_entry
         self.setcolumn("Window")
