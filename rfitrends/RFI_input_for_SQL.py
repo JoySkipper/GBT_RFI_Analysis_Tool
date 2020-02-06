@@ -24,6 +24,7 @@ import math
 import rfitrends.Column_fixes
 import configparser
 from rfitrends.manage_missing_cols import manage_missing_cols
+import json
 
 class FreqOutsideRcvrBoundsError(Exception):
     pass
@@ -118,10 +119,10 @@ def read_file(filepath,main_database,dirty_database):#use this function to read 
         if data_line == '\n':
             continue
         try:
-        data_entry = ReadFileLine_ColumnValues(has_header, data_line.strip().split(), header_map['Column names'], f.name)
+            data_entry = ReadFileLine_ColumnValues(has_header, data_line.strip().split(), header_map['Column names'], f.name)
         # If the data was flagged for some reason, skip it. Not useful for science. 
         except InvalidIntensity:
-                continue
+            continue
 
         try:
             def FrequencyVerification(frequency_value,header):
@@ -262,12 +263,18 @@ def ReadFileLine_ColumnValues(has_header,line_value: list,column_names,filepath)
         except:
             raise InvalidColumnValues("There is an unrecognized column name "+column_name+". Please check and reformat your file or add it to the list of column names in Column_fixes.py")
         fixed_column_names.append(fixed_column_name)
-    # We also need to check that Frequency and Intensity exist somewhere in these columns, as they're needed for any science: 
-    if "Frequency_MHz" not in fixed_column_names or "Intensity_Jy" not in fixed_column_names:
-        data_entry = {
-            "Flagged": True,
-        }
-        return data_entry
+    # We also need to check that required columns in the conf file exist somewhere in these columns, as they're needed for any science: 
+    config = configparser.ConfigParser()
+    config.read("rfitrends.conf")
+    mandatory_columns = json.loads(config['Mandatory Fields']['mandatory_columns'])
+    for mandatory_column in mandatory_columns:
+        if mandatory_column not in fixed_column_names:
+            raise InvalidColumnValues("One of the manditory columns listed in rfitrends.conf is not present in this file. This is required to continue processing this file.")
+    #if "Frequency_MHz" not in fixed_column_names or "Intensity_Jy" not in fixed_column_names:
+     #   data_entry = {
+     #       "Flagged": True,
+    #    }
+    #    return data_entry
 
     # now that we know this is a correctly made line, we can get the data from the lines: 
     data_entry  = dict(zip(fixed_column_names,line_value))
@@ -339,7 +346,7 @@ def write_to_database(username,password,IP_address,database,main_table,dirty_tab
             formatted_RFI_file = read_file(filepath,main_table,dirty_table)
         except InvalidColumnValues:
             continue
-        
+
         # with open('/users/jskipper/Documents/scripts/RFI/test_writing_files/test_file_'+filename, 'w') as writer
         
         for data_entry in formatted_RFI_file.get("Data"):#for each value in that multi-valued set
