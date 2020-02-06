@@ -213,7 +213,7 @@ def extrapolate_header(filepath):
 
     year_formatted = date.strftime('%Y')[2:]
     utc_formatted = date.strftime('%m%d'+year_formatted+' %H%M')
-    LSThh,LSTmm,LSTss = LST_calculator.LST_calculator(utc_formatted)
+    LSThh,LSTmm,LSTss = rfitrends.LST_calculator.LST_calculator(utc_formatted)
     LST = LSThh + LSTmm/60.0 + LSTss/3600.0
     extrapolated_header.update({"lst (hrs)": LST})
 
