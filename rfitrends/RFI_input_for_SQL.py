@@ -28,6 +28,12 @@ from rfitrends.manage_missing_cols import manage_missing_cols
 class FreqOutsideRcvrBoundsError(Exception):
     pass
 
+class InvalidColumnValues(Exception):
+    pass
+
+class InvalidIntensity(Exception):
+    pass
+
 
 
 def read_file(filepath,main_database,dirty_database):#use this function to read in a particular file and return a dictionary with all header values and lists of the data
@@ -108,14 +114,15 @@ def read_file(filepath,main_database,dirty_database):#use this function to read 
     # Pulls filename from full path to filename
     header_map["filename"] = filepath.split("/")[-1]
     
-     
     for data_line in f:
         if data_line == '\n':
             continue
+        try:
         data_entry = ReadFileLine_ColumnValues(has_header, data_line.strip().split(), header_map['Column names'], f.name)
         # If the data was flagged for some reason, skip it. Not useful for science. 
-        if "Flagged" in data_entry.keys():
+        except InvalidIntensity:
                 continue
+
         try:
             def FrequencyVerification(frequency_value,header):
                 """
@@ -246,17 +253,14 @@ def ReadFileLine_ColumnValues(has_header,line_value: list,column_names,filepath)
     # Unfortunately, we first have to check if the column names match the length of the column values. For example, if the columns overlapped with themselves anywhere, such as the frequency values bleeding into intensity values to make 1471.456800.000 which should be 
     # something like 1471.456 for frequency and 800.000 for intensity or something (these are made up numbers for example only). 
     if len(column_names) != len(line_value):
-        data_entry = {
-            "Flagged": True,
-        }
-        return data_entry
+        raise InvalidColumnValues("The number of column names and number of column values for this file is not equal. This is an invalid file.")
     # Next we need to streamline the naming conventions for the columns:    
     fixed_column_names = []
     for column_name in column_names:
         try: 
             fixed_column_name = rfitrends.Column_fixes.Column_name_corrections[column_name]
         except:
-            SystemExit("There is an unrecognized column name "+column_name+". Please check and reformat your file or add it to the list of column names in Column_fixes.py")
+            raise InvalidColumnValues("There is an unrecognized column name "+column_name+". Please check and reformat your file or add it to the list of column names in Column_fixes.py")
         fixed_column_names.append(fixed_column_name)
     # We also need to check that Frequency and Intensity exist somewhere in these columns, as they're needed for any science: 
     if "Frequency_MHz" not in fixed_column_names or "Intensity_Jy" not in fixed_column_names:
@@ -271,10 +275,7 @@ def ReadFileLine_ColumnValues(has_header,line_value: list,column_names,filepath)
     # Finally, we need to throw away this line if Intensity is NaN, as it's not a useful line for science: 
     intensity_isNaN = math.isnan(float(data_entry["Intensity_Jy"]))
     if intensity_isNaN:
-        data_entry = {
-            "Flagged": True,
-        }
-        return data_entry
+        raise InvalidIntensity()
 
     # Okay, so there's nothing wrong with the line, so we can actually return a normal line: 
     return data_entry
@@ -334,8 +335,11 @@ def write_to_database(username,password,IP_address,database,main_table,dirty_tab
         if filename in unique_filename:
             print("File already exists in database, moving on to next file.")
             continue
+        try:
+            formatted_RFI_file = read_file(filepath,main_table,dirty_table)
+        except InvalidColumnValues:
+            continue
         
-        formatted_RFI_file = read_file(filepath,main_table,dirty_table)
         # with open('/users/jskipper/Documents/scripts/RFI/test_writing_files/test_file_'+filename, 'w') as writer
         
         for data_entry in formatted_RFI_file.get("Data"):#for each value in that multi-valued set
