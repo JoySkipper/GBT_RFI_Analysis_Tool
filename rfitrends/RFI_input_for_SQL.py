@@ -120,7 +120,7 @@ def read_file(filepath,main_database,dirty_database):#use this function to read 
             continue
         try:
             data_entry = ReadFileLine_ColumnValues(has_header, data_line.strip().split(), header_map['Column names'], f.name)
-        # If the data was flagged for some reason, skip it. Not useful for science. 
+        # If the data was flagged for invalid intensity, skip it. Not useful for science. 
         except InvalidIntensity:
             continue
 
@@ -234,7 +234,6 @@ def extrapolate_header(filepath):
     extrapolated_header.update({"Units":"Jy"})
     extrapolated_header.update({"scan_number":"NaN"})
 
-    #column_names = ["Frequency (MHz)","Intensity (Jy)"] # we can't glean the column names from the header either, but we know what they are
     extrapolated_header['Column names'] = ["Frequency (MHz)","Intensity (Jy)"]
     return(extrapolated_header)
 
@@ -270,11 +269,6 @@ def ReadFileLine_ColumnValues(has_header,line_value: list,column_names,filepath)
     for mandatory_column in mandatory_columns:
         if mandatory_column not in fixed_column_names:
             raise InvalidColumnValues("One of the manditory columns listed in rfitrends.conf is not present in this file. This is required to continue processing this file.")
-    #if "Frequency_MHz" not in fixed_column_names or "Intensity_Jy" not in fixed_column_names:
-     #   data_entry = {
-     #       "Flagged": True,
-    #    }
-    #    return data_entry
 
     # now that we know this is a correctly made line, we can get the data from the lines: 
     data_entry  = dict(zip(fixed_column_names,line_value))
@@ -297,7 +291,6 @@ def prompt_user_login_to_database(IP_address, database):
             connector.connect(user=username, password=password,
                                 host=IP_address,
                                 database=database)
-            #cursor = cnx.cursor()
             return(username, password)
         except:
             print("Incorrect username or password. Please try again.")
@@ -347,10 +340,7 @@ def write_to_database(username,password,IP_address,database,main_table,dirty_tab
         except InvalidColumnValues:
             continue
 
-        # with open('/users/jskipper/Documents/scripts/RFI/test_writing_files/test_file_'+filename, 'w') as writer
-        
         for data_entry in formatted_RFI_file.get("Data"):#for each value in that multi-valued set
-            # writer.write("         "+str(data_entry["Window"]+"         "+str(data_entry["Channel"]+"         "+str(data_entry["Frequency_MHz"]+"         "+str(data_entry["Intensity_Jy"]+"\n")))))
             data_entry = manage_missing_cols(data_entry).getdata_entry()
             add_values = "INSERT INTO "+str(data_entry["Database"])+" (feed,frontend,`azimuth_deg`,projid,`resolution_MHz`,Window,exposure,utc_hrs,date,number_IF_Windows,Channel,backend,mjd,Frequency_MHz,lst,filename,polarization,source,tsys,frequency_type,units,Intensity_Jy,scan_number,`elevation_deg`, `Counts`) VALUES (\""+str(formatted_RFI_file.get("feed"))+"\",\""+str(formatted_RFI_file.get("frontend"))+"\",\""+str(formatted_RFI_file.get("azimuth (deg)"))+"\",\""+str(formatted_RFI_file.get("projid"))+"\",\""+str(formatted_RFI_file.get("frequency_resolution (MHz)"))+"\",\""+str(data_entry["Window"])+"\",\""+str(formatted_RFI_file.get("exposure (sec)"))+"\",\""+str(formatted_RFI_file.get("utc (hrs)"))+"\",\""+str(formatted_RFI_file.get("date"))+"\",\""+str(formatted_RFI_file.get("number_IF_Windows"))+"\",\""+str(data_entry["Channel"])+"\",\""+str(formatted_RFI_file.get("backend"))+"\",\""+str(formatted_RFI_file.get("mjd"))+"\",\""+str(data_entry["Frequency_MHz"])+"\",\""+str(formatted_RFI_file.get("lst (hrs)"))+"\",\""+str(formatted_RFI_file.get("filename"))+"\",\""+str(formatted_RFI_file.get("polarization"))+"\",\""+str(formatted_RFI_file.get("source"))+"\",\""+str(formatted_RFI_file.get("tsys"))+"\",\""+str(formatted_RFI_file.get("frequency_type"))+"\",\""+str(formatted_RFI_file.get("units"))+"\",\""+str(data_entry["Intensity_Jy"])+"\",\""+str(formatted_RFI_file.get("scan_number"))+"\",\""+str(formatted_RFI_file.get("elevation (deg)"))+"\",\""+str(data_entry["Counts"])+"\");"
             cursor.execute(add_values)
