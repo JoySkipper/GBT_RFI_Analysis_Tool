@@ -400,6 +400,14 @@ def write_to_database(username,password,IP_address,database,main_table,dirty_tab
             if frontend_for_rcvr_table != 'Unknown':
                 add_receiver_keys = "INSERT INTO "+frontend_for_rcvr_table+" (Frequency_MHz,mjd) VALUES (\""+str(data_entry["Frequency_MHz"])+"\", \""+str(formatted_RFI_file.get("mjd"))+"\");"
                 cursor.execute(add_receiver_keys)
+                # This is just adding the most recently processed project id, but this isn't necessarily the most recent one date-wise. Fix
+                cursor.execute("SELECT mjd from latest_projects WHERE frontend= \""+frontend_for_rcvr_table+"\"")
+                latest_mjd = float(cursor.fetchall()[0][0])
+                if latest_mjd < float(formatted_RFI_file.get("mjd")):
+                    update_latest_projid = "UPDATE latest_projects SET projid=\""+str(formatted_RFI_file.get("projid"))+"\" WHERE frontend = \""+frontend_for_rcvr_table+"\""
+                    cursor.execute(update_latest_projid)
+                    update_latest_date = "UPDATE latest_projects SET mjd=\""+str(formatted_RFI_file.get("mjd"))+"\" WHERE frontend = \""+frontend_for_rcvr_table+"\""
+                    cursor.execute(update_latest_date)
 
         print(str(filename)+" uploaded.")
 
