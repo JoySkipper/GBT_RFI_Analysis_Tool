@@ -396,6 +396,7 @@ def write_to_database(username,password,IP_address,database,main_table,dirty_tab
             cursor.execute(add_main_values)
             # We have some receiver names that are too generic or specific for our receiver tables, so we're making that consistent
             frontend_for_rcvr_table = rfitrends.GBT_receiver_specs.PrepareFrontendInput(formatted_RFI_file.get("frontend"))
+            # Putting composite key values into the receiver table
             if frontend_for_rcvr_table != 'Unknown':
                 add_receiver_keys = "INSERT INTO "+frontend_for_rcvr_table+" (Frequency_MHz,mjd) VALUES (\""+str(data_entry["Frequency_MHz"])+"\", \""+str(formatted_RFI_file.get("mjd"))+"\");"
                 cursor.execute(add_receiver_keys)

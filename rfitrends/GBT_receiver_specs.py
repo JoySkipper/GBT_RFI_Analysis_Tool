@@ -83,13 +83,13 @@ GBT_receiver_ranges = {
 }
 
 GBT_receiver_input_values = {
-    'Rcvr_342':'Prime Focus',
-    'Rcvr_450':'Prime Focus',
-    'Rcvr_600':'Prime Focus',
-    'Rcvr_800':'Prime Focus',
-    'Prime Focus 1': 'Prime Focus',
-    'Prime Focus 2': 'Prime Focus',
-    'Prime Focus All': 'Prime Focus',
+    'Rcvr_342':'Prime_Focus',
+    'Rcvr_450':'Prime_Focus',
+    'Rcvr_600':'Prime_Focus',
+    'Rcvr_800':'Prime_Focus',
+    'Prime Focus 1': 'Prime_Focus',
+    'Prime Focus 2': 'Prime_Focus',
+    'Prime Focus All': 'Prime_Focus',
     'Array All':'Unknown',
     'RcvrArray1_2':'Unknown',
     'Rcvr1_2':'Rcvr1_2',
