@@ -36,7 +36,6 @@ class InvalidIntensity(Exception):
     pass
 
 class DuplicateValues(Exception):
-    print("There is a problem. We are getting values with duplicate times and frequencies. Dropping file.")
     pass
 
 
@@ -121,6 +120,18 @@ def read_file(filepath,main_database,dirty_database, cursor):#use this function 
         # Set the reader back to the first line
         f.seek(0)
 
+    # Loop until we find the first valid data line, which we need to lookup the primary key:
+    while True:
+        if first_data_line == '\n':
+            first_data_line = f.readline()
+        try:
+            first_data_entry = ReadFileLine_ColumnValues(has_header, first_data_line.strip().split(), header_map['Column names'], f.name)
+        except InvalidIntensity:
+            # If the velocity is invalid, then continue to read the next line:
+            first_data_line = f.readline()
+            continue
+        break
+        
     # Verifies that frontend given exists, otherwise labels it as Unknown. 
     header_map["frontend"] = rfitrends.GBT_receiver_specs.FrontendVerification(header_map["frontend"])
     # Pulls filename from full path to filename
@@ -130,7 +141,7 @@ def read_file(filepath,main_database,dirty_database, cursor):#use this function 
     # We check for existing filenames, but there is an instance of the same frequency, and intensity somehow being tagged under different filenames
     # This error has not been able to be replicated, as it hasn't occured since 2017 and the data was not archived
     # IF THIS ERROR SHOWS, PLEASE CONTACT THE MAINTAINER OF THIS CODE. Then we can replicate the issue and possibly fix it. 
-    first_data_entry = ReadFileLine_ColumnValues(has_header, first_data_line.strip().split(), header_map['Column names'], f.name)
+
     first_line_entry = dict(header_map)
     first_line_entry.update(first_data_entry)
     # Getting primary composite key from config file:
@@ -140,12 +151,13 @@ def read_file(filepath,main_database,dirty_database, cursor):#use this function 
     search_query = "SELECT * from "+main_database+" WHERE "
     # Searching by all the values in the composite key
     for composite_key in composite_keys:
-        search_query += composite_key+" = "+first_line_entry[composite_key]+" AND "
+        search_query += composite_key+" = "+str(first_line_entry[composite_key])+" AND "
     # Removing last " AND "
     search_query = search_query[:-4]
+    # Execute query and see if there's a duplicate primary key with the first line and the database. If so, raise error
     cursor.execute(search_query)
     myresult = cursor.fetchall()
-    if not myresult:
+    if myresult:
         raise DuplicateValues
     
     
@@ -372,8 +384,10 @@ def write_to_database(username,password,IP_address,database,main_table,dirty_tab
         try:
             formatted_RFI_file = read_file(filepath,main_table,dirty_table,cursor)
         except InvalidColumnValues:
+            print("Column values are invalid. Dropping file.")
             continue
         except DuplicateValues:
+            print("There is a problem. We are getting values with duplicate times and frequencies. Dropping file. PLEASE INFORM THE MAINTAINER OF THIS FILE SO WE CAN REPLICATE THE BUG.")
             continue
         
         for data_entry in formatted_RFI_file.get("Data"):#for each value in that multi-valued set
