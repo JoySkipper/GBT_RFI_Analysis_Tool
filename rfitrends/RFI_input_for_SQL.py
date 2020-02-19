@@ -35,15 +35,20 @@ class InvalidColumnValues(Exception):
 class InvalidIntensity(Exception):
     pass
 
+class DuplicateValues(Exception):
+    print("There is a problem. We are getting values with duplicate times and frequencies. Dropping file.")
+    pass
 
 
-def read_file(filepath,main_database,dirty_database):#use this function to read in a particular file and return a dictionary with all header values and lists of the data
+
+def read_file(filepath,main_database,dirty_database, cursor):#use this function to read in a particular file and return a dictionary with all header values and lists of the data
     """
     Goes through each file, line by line, processes and cleans the data, then loads it into a dictionary with a marker for the corresponding database
     to which it belongs. 
 
     param main_database: the primary database to which the person wants their clean data to go
     param dirty_database: the secondary database to which the person wans their "dirty," or nonsensical data to go
+    param cursor: The connection to the database
     returns formatted_RFI_file: The dictionary with all of the data formatted and organized. 
     returns header_map: contains all information, not just header
     """
@@ -83,10 +88,12 @@ def read_file(filepath,main_database,dirty_database):#use this function to read 
                         # Peek ahead at next line
                         current_position = f.tell()
                         # If there is no '#' symbol, the next line is data, therefore this line denotes the column names
-                        if "#" not in f.readline():
+                        first_data_line = f.readline()
+                        if "#" not in first_data_line:
                             # Assumes column names are separated by variable number of spaces/tabs
                             column_entries = line.strip('#').split()
                             header['Column names'] = column_entries
+
                         # Otherwise it's either a title line, or we don't support the syntax. Regardless, we should skip it
                         else:
                             #print("Skipping header line: " + line)
@@ -105,15 +112,42 @@ def read_file(filepath,main_database,dirty_database):#use this function to read 
                 previous_line_position = f.tell()
                 line = f.readline()
 
-            return header
-        header_map = process_header(f)
+            return(header,first_data_line)
+        header_map,first_data_line = process_header(f)
     else:
         header_map = extrapolate_header(f.name)
+        # Get the first line 
+        first_data_line = f.readline()
+        # Set the reader back to the first line
+        f.seek(0)
 
     # Verifies that frontend given exists, otherwise labels it as Unknown. 
     header_map["frontend"] = rfitrends.GBT_receiver_specs.FrontendVerification(header_map["frontend"])
     # Pulls filename from full path to filename
     header_map["filename"] = filepath.split("/")[-1]
+    
+    # We got the first line so we can look up with the primary key to see if this primary key has somehow been entered before: 
+    # We check for existing filenames, but there is an instance of the same frequency, and intensity somehow being tagged under different filenames
+    # This error has not been able to be replicated, as it hasn't occured since 2017 and the data was not archived
+    # IF THIS ERROR SHOWS, PLEASE CONTACT THE MAINTAINER OF THIS CODE. Then we can replicate the issue and possibly fix it. 
+    first_data_entry = ReadFileLine_ColumnValues(has_header, first_data_line.strip().split(), header_map['Column names'], f.name)
+    first_line_entry = dict(header_map)
+    first_line_entry.update(first_data_entry)
+    # Getting primary composite key from config file:
+    config = configparser.ConfigParser()
+    config.read("rfitrends.conf")
+    composite_keys = json.loads(config['Mandatory Fields']['primary_composite_key'])
+    search_query = "SELECT * from "+main_database+" WHERE "
+    # Searching by all the values in the composite key
+    for composite_key in composite_keys:
+        search_query += composite_key+" = "+first_line_entry[composite_key]+" AND "
+    # Removing last " AND "
+    search_query = search_query[:-4]
+    cursor.execute(search_query)
+    myresult = cursor.fetchall()
+    if not myresult:
+        raise DuplicateValues
+    
     
     for data_line in f:
         if data_line == '\n':
@@ -336,10 +370,12 @@ def write_to_database(username,password,IP_address,database,main_table,dirty_tab
             print("File already exists in database, moving on to next file.")
             continue
         try:
-            formatted_RFI_file = read_file(filepath,main_table,dirty_table)
+            formatted_RFI_file = read_file(filepath,main_table,dirty_table,cursor)
         except InvalidColumnValues:
             continue
-
+        except DuplicateValues:
+            continue
+        
         for data_entry in formatted_RFI_file.get("Data"):#for each value in that multi-valued set
             data_entry = manage_missing_cols(data_entry).getdata_entry()
             add_values = "INSERT INTO "+str(data_entry["Database"])+" (feed,frontend,`azimuth_deg`,projid,`resolution_MHz`,Window,exposure,utc_hrs,date,number_IF_Windows,Channel,backend,mjd,Frequency_MHz,lst,filename,polarization,source,tsys,frequency_type,units,Intensity_Jy,scan_number,`elevation_deg`, `Counts`) VALUES (\""+str(formatted_RFI_file.get("feed"))+"\",\""+str(formatted_RFI_file.get("frontend"))+"\",\""+str(formatted_RFI_file.get("azimuth (deg)"))+"\",\""+str(formatted_RFI_file.get("projid"))+"\",\""+str(formatted_RFI_file.get("frequency_resolution (MHz)"))+"\",\""+str(data_entry["Window"])+"\",\""+str(formatted_RFI_file.get("exposure (sec)"))+"\",\""+str(formatted_RFI_file.get("utc (hrs)"))+"\",\""+str(formatted_RFI_file.get("date"))+"\",\""+str(formatted_RFI_file.get("number_IF_Windows"))+"\",\""+str(data_entry["Channel"])+"\",\""+str(formatted_RFI_file.get("backend"))+"\",\""+str(formatted_RFI_file.get("mjd"))+"\",\""+str(data_entry["Frequency_MHz"])+"\",\""+str(formatted_RFI_file.get("lst (hrs)"))+"\",\""+str(formatted_RFI_file.get("filename"))+"\",\""+str(formatted_RFI_file.get("polarization"))+"\",\""+str(formatted_RFI_file.get("source"))+"\",\""+str(formatted_RFI_file.get("tsys"))+"\",\""+str(formatted_RFI_file.get("frequency_type"))+"\",\""+str(formatted_RFI_file.get("units"))+"\",\""+str(data_entry["Intensity_Jy"])+"\",\""+str(formatted_RFI_file.get("scan_number"))+"\",\""+str(formatted_RFI_file.get("elevation (deg)"))+"\",\""+str(data_entry["Counts"])+"\");"
@@ -357,7 +393,8 @@ def write_to_database(username,password,IP_address,database,main_table,dirty_tab
 if __name__ == "__main__":
     import ptvsd 
     # Allow other computers to attach to ptvsd at this IP address and port. 
-    # ptvsd.enable_attach(address=('10.16.96.210', 3001), redirect_output=True) 
+    ptvsd.enable_attach(address=('10.16.96.210', 3001), redirect_output=True) 
+    ptvsd.wait_for_attach()
     # Adding in-line arguments:
     parser = argparse.ArgumentParser(description="Takes .txt files of RFI data and uploads them to the given database")
     parser.add_argument("main_table",help="The string name of the table to which you'd like to upload your clean RFI data")
