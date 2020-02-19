@@ -82,6 +82,31 @@ GBT_receiver_ranges = {
     'Unknown':{'freq_min':290.0,'freq_max':115300.0}
 }
 
+GBT_receiver_input_values = {
+    'Rcvr_342':'Prime Focus',
+    'Rcvr_450':'Prime Focus',
+    'Rcvr_600':'Prime Focus',
+    'Rcvr_800':'Prime Focus',
+    'Prime Focus 1': 'Prime Focus',
+    'Prime Focus 2': 'Prime Focus',
+    'Prime Focus All': 'Prime Focus',
+    'Array All':'Unknown',
+    'RcvrArray1_2':'Unknown',
+    'Rcvr1_2':'Rcvr1_2',
+    'Rcvr2_3':'Rcvr2_3',
+    'Rcvr4_8': 'Rcvr4_8',
+    'Rcvr8_10':'Rcvr8_10',
+    'Kband All':'Unknown',
+    'Rcvr12_18':'Rcvr12_18',
+    'RcvrArray18_26':'RcvrArray18_26',
+    'Rcvr26_40':'Rcvr26_40',
+    'Rcvr40_52':'Rcvr40_52',
+    'Rcvr68_92':'Rcvr68_92',
+    'RcvrMBA1_2':'RcvrMBA1_2',
+    'RcvrArray75_115':'RcvrArray75_115',
+    'Unknown':'Unknown'
+}
+
 
 def frontend_modify_input(frontend_input):
     try: 
@@ -98,6 +123,10 @@ def FrontendVerification(frontend_input):
         print("Frontend \""+str(frontend_input)+"\" not recognized as one from our known list of receivers. If you know the corresponding receiver, please add it to the file GBT_receiver_specs.py for future use. The frontend will be set to \"Unknown\" for now.")
         frontend_verified = 'Unknown'
     return(frontend_verified)
+
+def PrepareFrontendInput(frontend):
+    frontend = GBT_receiver_input_values[frontend]
+    return(frontend)
 
 
 
