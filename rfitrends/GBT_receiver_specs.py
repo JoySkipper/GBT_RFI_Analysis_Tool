@@ -21,8 +21,8 @@ frontend_aliases = {
     'RcvrArray1_2':'RcvrArray1_2',
     'Rcvr1_2': 'Rcvr1_2',
     'Rcvr2_3': 'Rcvr2_3',
-    'Rcvr4_6': 'Rcvr4_8',
-    'Rcvr4_8':'Rcvr4_8',
+    'Rcvr4_6': 'Rcvr4_6',
+    'Rcvr4_8':'Rcvr4_6',
     'x':'Rcvr8_10',
     'Rcvr8_1': 'Rcvr8_10',
     'Rcvr8_10':'Rcvr8_10',
@@ -30,8 +30,8 @@ frontend_aliases = {
     'Rcvr12_18':'Rcvr12_18',
     'KU1': 'Rcvr12_18',
     'Ku1': 'Rcvr12_18',
-    'RcvrArray18_26':'RcvrArray19_26',
-    'RcvrArray19_26':'RcvrArray19_26',
+    'RcvrArray18_26':'RcvrArray18_26',
+    'RcvrArray19_26':'RcvrArray18_26',
     'Rcvr26_40':'Rcvr26_40',
     'Rcvr40_': 'Rcvr40_52',
     'Rcvr40_52':'Rcvr40_52',
@@ -69,17 +69,42 @@ GBT_receiver_ranges = {
     'RcvrArray1_2':{'freq_min':1200.0,'freq_max':1600.0},
     'Rcvr1_2':{'freq_min':1150.0, 'freq_max':1730.0},
     'Rcvr2_3':{'freq_min':1730.0,'freq_max':2600.0},
-    'Rcvr4_8':{'freq_min':3950.0, 'freq_max': 7800.0},
+    'Rcvr4_6':{'freq_min':3950.0, 'freq_max': 7800.0},
     'Rcvr8_10':{'freq_min':8000.0,'freq_max':11600.0},
     'Kband All':{'freq_min':12000.0,'freq_max':40000.0},
     'Rcvr12_18':{'freq_min':12000.0,'freq_max':15400.0},
-    'RcvrArray19_26':{'freq_min':18000.0,'freq_max':27500.0},
+    'RcvrArray18_26':{'freq_min':18000.0,'freq_max':27500.0},
     'Rcvr26_40':{'freq_min':26000.0,'freq_max':39500.0},
     'Rcvr40_52':{'freq_min':38200.0,'freq_max':49800.0},
     'Rcvr68_92':{'freq_min':67000.0,'freq_max':93300.0},
     'RcvrMBA1_2':{'freq_min':80000.0,'freq_max':100000.0},
     'RcvrArray75_115':{'freq_min':80000.0,'freq_max':115300.0},
     'Unknown':{'freq_min':290.0,'freq_max':115300.0}
+}
+
+GBT_receiver_input_values = {
+    'Rcvr_342':'Prime_Focus',
+    'Rcvr_450':'Prime_Focus',
+    'Rcvr_600':'Prime_Focus',
+    'Rcvr_800':'Prime_Focus',
+    'Prime Focus 1': 'Prime_Focus',
+    'Prime Focus 2': 'Prime_Focus',
+    'Prime Focus All': 'Prime_Focus',
+    'Array All':'Unknown',
+    'RcvrArray1_2':'Unknown',
+    'Rcvr1_2':'Rcvr1_2',
+    'Rcvr2_3':'Rcvr2_3',
+    'Rcvr4_6': 'Rcvr4_6',
+    'Rcvr8_10':'Rcvr8_10',
+    'Kband All':'Unknown',
+    'Rcvr12_18':'Rcvr12_18',
+    'RcvrArray18_26':'RcvrArray18_26',
+    'Rcvr26_40':'Rcvr26_40',
+    'Rcvr40_52':'Rcvr40_52',
+    'Rcvr68_92':'Rcvr68_92',
+    'RcvrMBA1_2':'RcvrMBA1_2',
+    'RcvrArray75_115':'RcvrArray75_115',
+    'Unknown':'Unknown'
 }
 
 
@@ -98,6 +123,10 @@ def FrontendVerification(frontend_input):
         print("Frontend \""+str(frontend_input)+"\" not recognized as one from our known list of receivers. If you know the corresponding receiver, please add it to the file GBT_receiver_specs.py for future use. The frontend will be set to \"Unknown\" for now.")
         frontend_verified = 'Unknown'
     return(frontend_verified)
+
+def PrepareFrontendInput(frontend):
+    frontend = GBT_receiver_input_values[frontend]
+    return(frontend)
 
 
 

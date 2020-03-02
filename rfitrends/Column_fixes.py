@@ -12,7 +12,7 @@ Column_name_corrections = {
     "Frequency(GHz)": "Frequency_MHz",
     "Frequency GHz)": "Frequency_MHz",
     "Intensity(Jy)": "Intensity_Jy",
-    "Intenstiy (Jy)":"Intensity_Jy",
+    "Intensity (Jy)":"Intensity_Jy",
     "Window": "Window",
     "IFWindow":"Window",
     "Channel":"Channel"
