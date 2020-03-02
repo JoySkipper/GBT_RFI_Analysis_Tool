@@ -54,7 +54,7 @@ def read_file(filepath,main_database,dirty_database, cursor):#use this function 
     
     f = open(filepath, 'r') #open file
     #these are lists containing column values that will be added to the dictionary later:
-    data = [] 
+    data = {}
     database = []
     if '#' in f.read(1):
         has_header = True
@@ -120,22 +120,38 @@ def read_file(filepath,main_database,dirty_database, cursor):#use this function 
         # Set the reader back to the first line
         f.seek(0)
 
-    # Loop until we find the first valid data line, which we need to lookup the primary key:
-    while True:
-        if first_data_line == '\n':
-            first_data_line = f.readline()
-        try:
-            first_data_entry = ReadFileLine_ColumnValues(has_header, first_data_line.strip().split(), header_map['Column names'], f.name)
-        except InvalidIntensity:
-            # If the velocity is invalid, then continue to read the next line:
-            first_data_line = f.readline()
-            continue
-        break
-        
     # Verifies that frontend given exists, otherwise labels it as Unknown. 
     header_map["frontend"] = rfitrends.GBT_receiver_specs.FrontendVerification(header_map["frontend"])
     # Pulls filename from full path to filename
     header_map["filename"] = filepath.split("/")[-1]
+    # Loop until we find the first valid data line, which we need to lookup the primary key:
+
+
+    last_pos = f.tell()
+        if first_data_line == '\n':
+            first_data_line = f.readline()
+    while True:
+        try:
+            first_data_entry = ReadFileLine_ColumnValues(has_header, first_data_line.strip().split(), header_map['Column names'], f.name)
+        except InvalidIntensity:
+            # If the velocity is invalid, then continue to read the next line:
+            last_pos = f.tell()
+            first_data_line = f.readline()
+            continue
+
+        break
+    f.seek(last_pos)
+    try:
+        first_data_entry["Frequency_MHz"] = FrequencyVerification(first_data_entry["Frequency_MHz"],header_map)    
+    # IF we do get frequencies outside of the bounds that we want, we skip to the next line
+    except FreqOutsideRcvrBoundsError:
+        # This is a dirty table. The error handling below will catch it, so we just need the old frequency value. We mainly want the verification and change 
+        # Here in case the line is valid and needs tweaking (GHz to MHz, for example) 
+        # Assumes that if one value in a file is bad, that they all will be
+        pass
+        
+    
+
     
     # We got the first line so we can look up with the primary key to see if this primary key has somehow been entered before: 
     # We check for existing filenames, but there is an instance of the same frequency, and intensity somehow being tagged under different filenames
@@ -171,6 +187,32 @@ def read_file(filepath,main_database,dirty_database, cursor):#use this function 
             continue
 
         try:
+            data_entry["Frequency_MHz"] = FrequencyVerification(data_entry["Frequency_MHz"],header_map)
+            database.append(main_database)
+            database_value = main_database
+            
+        # IF we do get frequencies outside of the bounds that we want, we put it into the dirty table. 
+        except FreqOutsideRcvrBoundsError:
+            database.append(dirty_database)
+            database_value = dirty_database
+
+        data_entry["Database"] = database_value
+
+        # If data entry is already in data, we have a repeat value, then we just up the counts
+        if data_entry["Frequency_MHz"] in data:
+            data[data_entry["Frequency_MHz"]]["Counts"] += 1
+        
+        # If it's not in there, then we know there's one of them, the one we just found. Then we append it to the data list. 
+        else:
+            frequency_key = data_entry["Frequency_MHz"]
+            del data_entry["Frequency_MHz"]
+            data_entry["Counts"] = 1
+            data[frequency_key] = data_entry
+
+
+    header_map['Data'] = data
+    return(header_map)
+
             def FrequencyVerification(frequency_value,header):
                 """
                 Identifies issues in the frequency value in RFI-data
@@ -203,29 +245,7 @@ def read_file(filepath,main_database,dirty_database, cursor):#use this function 
                 if float(validated_frequency) < (freq_min - freq_buffer) or float(validated_frequency) > (freq_max + freq_buffer):
                     raise FreqOutsideRcvrBoundsError
                 return validated_frequency
-            data_entry["Frequency_MHz"] = FrequencyVerification(data_entry["Frequency_MHz"],header_map)
-            database.append(main_database)
-            database_value = main_database
             
-        # IF we do get frequencies outside of the bounds that we want, we put it into the dirty table. 
-        except FreqOutsideRcvrBoundsError:
-            database.append(dirty_database)
-            database_value = dirty_database
-
-        data_entry["Database"] = database_value
-
-        # If data entry is already in data, we have a repeat value, then we just up the counts
-        if data_entry in data:
-            repeat_index = data.index(data_entry)
-            data[repeat_index]["Counts"] += 1
-        # If it's not in there, then we know there's one of them, the one we just found. Then we append it to the data list. 
-        else:
-            data_entry["Counts"] = 1
-            data.append(data_entry)
-
-    header_map['Data'] = data
-    return(header_map)
-
 def extrapolate_header(filepath):
     """
     Gleans as much information that would normally be in a header from a file that has been determined by the read_file function to not have a header 
@@ -390,15 +410,15 @@ def write_to_database(username,password,IP_address,database,main_table,dirty_tab
             print("There is a problem. We are getting values with duplicate times and frequencies. Dropping file. PLEASE INFORM THE MAINTAINER OF THIS FILE SO WE CAN REPLICATE THE BUG.")
             continue
         
-        for data_entry in formatted_RFI_file.get("Data"):#for each value in that multi-valued set
+        for frequency_key,data_entry in formatted_RFI_file.get("Data").items():#for each value in that multi-valued set
             data_entry = manage_missing_cols(data_entry).getdata_entry()
-            add_main_values = "INSERT INTO "+str(data_entry["Database"])+" (feed,frontend,`azimuth_deg`,projid,`resolution_MHz`,Window,exposure,utc_hrs,date,number_IF_Windows,Channel,backend,mjd,Frequency_MHz,lst,filename,polarization,source,tsys,frequency_type,units,Intensity_Jy,scan_number,`elevation_deg`, `Counts`) VALUES (\""+str(formatted_RFI_file.get("feed"))+"\",\""+str(formatted_RFI_file.get("frontend"))+"\",\""+str(formatted_RFI_file.get("azimuth (deg)"))+"\",\""+str(formatted_RFI_file.get("projid"))+"\",\""+str(formatted_RFI_file.get("frequency_resolution (MHz)"))+"\",\""+str(data_entry["Window"])+"\",\""+str(formatted_RFI_file.get("exposure (sec)"))+"\",\""+str(formatted_RFI_file.get("utc (hrs)"))+"\",\""+str(formatted_RFI_file.get("date"))+"\",\""+str(formatted_RFI_file.get("number_IF_Windows"))+"\",\""+str(data_entry["Channel"])+"\",\""+str(formatted_RFI_file.get("backend"))+"\",\""+str(formatted_RFI_file.get("mjd"))+"\",\""+str(data_entry["Frequency_MHz"])+"\",\""+str(formatted_RFI_file.get("lst (hrs)"))+"\",\""+str(formatted_RFI_file.get("filename"))+"\",\""+str(formatted_RFI_file.get("polarization"))+"\",\""+str(formatted_RFI_file.get("source"))+"\",\""+str(formatted_RFI_file.get("tsys"))+"\",\""+str(formatted_RFI_file.get("frequency_type"))+"\",\""+str(formatted_RFI_file.get("units"))+"\",\""+str(data_entry["Intensity_Jy"])+"\",\""+str(formatted_RFI_file.get("scan_number"))+"\",\""+str(formatted_RFI_file.get("elevation (deg)"))+"\",\""+str(data_entry["Counts"])+"\");"
+            add_main_values = "INSERT INTO "+str(data_entry["Database"])+" (feed,frontend,`azimuth_deg`,projid,`resolution_MHz`,Window,exposure,utc_hrs,date,number_IF_Windows,Channel,backend,mjd,Frequency_MHz,lst,filename,polarization,source,tsys,frequency_type,units,Intensity_Jy,scan_number,`elevation_deg`, `Counts`) VALUES (\""+str(formatted_RFI_file.get("feed"))+"\",\""+str(formatted_RFI_file.get("frontend"))+"\",\""+str(formatted_RFI_file.get("azimuth (deg)"))+"\",\""+str(formatted_RFI_file.get("projid"))+"\",\""+str(formatted_RFI_file.get("frequency_resolution (MHz)"))+"\",\""+str(data_entry["Window"])+"\",\""+str(formatted_RFI_file.get("exposure (sec)"))+"\",\""+str(formatted_RFI_file.get("utc (hrs)"))+"\",\""+str(formatted_RFI_file.get("date"))+"\",\""+str(formatted_RFI_file.get("number_IF_Windows"))+"\",\""+str(data_entry["Channel"])+"\",\""+str(formatted_RFI_file.get("backend"))+"\",\""+str(formatted_RFI_file.get("mjd"))+"\",\""+str(frequency_key)+"\",\""+str(formatted_RFI_file.get("lst (hrs)"))+"\",\""+str(formatted_RFI_file.get("filename"))+"\",\""+str(formatted_RFI_file.get("polarization"))+"\",\""+str(formatted_RFI_file.get("source"))+"\",\""+str(formatted_RFI_file.get("tsys"))+"\",\""+str(formatted_RFI_file.get("frequency_type"))+"\",\""+str(formatted_RFI_file.get("units"))+"\",\""+str(data_entry["Intensity_Jy"])+"\",\""+str(formatted_RFI_file.get("scan_number"))+"\",\""+str(formatted_RFI_file.get("elevation (deg)"))+"\",\""+str(data_entry["Counts"])+"\");"
             cursor.execute(add_main_values)
             # We have some receiver names that are too generic or specific for our receiver tables, so we're making that consistent
             frontend_for_rcvr_table = rfitrends.GBT_receiver_specs.PrepareFrontendInput(formatted_RFI_file.get("frontend"))
             # Putting composite key values into the receiver table
             if frontend_for_rcvr_table != 'Unknown':
-                add_receiver_keys = "INSERT INTO "+frontend_for_rcvr_table+" (Frequency_MHz,mjd) VALUES (\""+str(data_entry["Frequency_MHz"])+"\", \""+str(formatted_RFI_file.get("mjd"))+"\");"
+                add_receiver_keys = "INSERT INTO "+frontend_for_rcvr_table+" (Frequency_MHz,mjd) VALUES (\""+str(frequency_key)+"\", \""+str(formatted_RFI_file.get("mjd"))+"\");"
                 cursor.execute(add_receiver_keys)
                 # This is just adding the most recently processed project id, but this isn't necessarily the most recent one date-wise. Fix
                 cursor.execute("SELECT mjd from latest_projects WHERE frontend= \""+frontend_for_rcvr_table+"\"")
@@ -406,7 +426,7 @@ def write_to_database(username,password,IP_address,database,main_table,dirty_tab
                 if latest_mjd < float(formatted_RFI_file.get("mjd")):
                     update_latest_projid = "UPDATE latest_projects SET projid=\""+str(formatted_RFI_file.get("projid"))+"\" WHERE frontend = \""+frontend_for_rcvr_table+"\""
                     cursor.execute(update_latest_projid)
-                    update_latest_date = "UPDATE latest_projects SET mjd=\""+str(formatted_RFI_file.get("mjd"))+"\" WHERE frontend = \""+frontend_for_rcvr_table+"\""
+                    update_latest_date = "UPDATE latest_projects SET mjd=\""+str(formatted_RFI_file.get("mjd"))+"\" WHERE frontend = \""+frontend_for_rcvr_table+"\";"
                     cursor.execute(update_latest_date)
 
         print(str(filename)+" uploaded.")
