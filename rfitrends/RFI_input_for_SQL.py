@@ -449,21 +449,43 @@ def write_to_database(username,password,IP_address,database,main_table,dirty_tab
                     host=IP_address,
                     database=database)
                 cursor = cnx.cursor(buffered=True)
-                intensity_query = ("SELECT Intensity_Jy from "+str(data_entry["Database"])+" WHERE Frequency_MHz = "+str(frequency_key)+" AND mjd = "+str(formatted_RFI_file.get("mjd")))
+                intensity_query = ("SELECT Intensity_Jy,filename,Counts from "+str(data_entry["Database"])+" WHERE Frequency_MHz = "+str(frequency_key)+" AND mjd = "+str(formatted_RFI_file.get("mjd")))
                 cursor.execute(intensity_query) 
-                response = cursor.fetchall()
-                old_intensity = float(response[0][0])
-                new_intensity = float(data_entry["Intensity_Jy"])
-                intensity_avg = (old_intensity+new_intensity)/2.0
-                cursor.close()
-                cnx = connector.connect(user=username, password=password,
-                    host=IP_address,
-                    database=database)
-                cursor = cnx.cursor(buffered=True)
-                update_avg_intensity = ("UPDATE "+str(data_entry["Database"]+" SET Counts = "+str(int(data_entry["Counts"])+ 1)+", Intensity_Jy = "+str(intensity_avg)+", Window = \'NaN\', Channel = \'NaN\' where Frequency_MHz = "+str(frequency_key)+" AND mjd = "+str(formatted_RFI_file.get("mjd"))))
-                cursor.execute(update_avg_intensity)
-                cnx.commit()
-                cursor.close()
+                responses = cursor.fetchall()
+                for response in responses:
+                    # Need to weight the 
+                    current_counts = response[2]
+                    old_intensity = float(response[0])
+                    new_intensity = float(data_entry["Intensity_Jy"])
+                    intensity_avg = (new_intensity+(old_intensity*float(current_counts)))/2.0
+                    cursor.close()
+                    old_filename = response[1]
+                    if old_filename != "Duplicate":
+                        cnx = connector.connect(user=username, password=password,
+                            host=IP_address,
+                            database=database)
+                        cursor = cnx.cursor(buffered=True)
+                        insert_old_duplicate_data = ("INSERT INTO duplicate_data_catalog (Frequency_MHz,Intensity_Jy,filename) VALUES (\'"+str(frequency_key)+"\',\'"+str(old_intensity)+"\',\'"+str(old_filename)+"\')")
+                        cursor.execute(insert_old_duplicate_data)
+                        cnx.commit()
+                        cursor.close()
+                    cnx = connector.connect(user=username, password=password,
+                        host=IP_address,
+                        database=database)
+                    cursor = cnx.cursor(buffered=True)
+                    update_avg_intensity = ("UPDATE "+str(data_entry["Database"]+" SET Counts = "+str(int(current_counts)+ 1)+", Intensity_Jy = "+str(intensity_avg)+", Window = \'NaN\', Channel = \'NaN\', filename = \'Duplicate\' where Frequency_MHz = "+str(frequency_key)+" AND mjd = "+str(formatted_RFI_file.get("mjd"))))
+                    cursor.execute(update_avg_intensity)
+                    cnx.commit()
+                    cursor.close()
+                    cnx = connector.connect(user=username, password=password,
+                        host=IP_address,
+                        database=database)
+                    cursor = cnx.cursor(buffered=True)
+                    insert_new_duplicate_data = ("INSERT INTO duplicate_data_catalog (Frequency_MHz,Intensity_Jy,filename) VALUES (\'"+str(frequency_key)+"\',\'"+str(new_intensity)+"\',\'"+str(formatted_RFI_file.get("filename"))+"\')")
+                    cursor.execute(insert_new_duplicate_data)
+                    cnx.commit()
+                    cursor.close()
+                    
                 duplicate_entry = True
             
             # We have some receiver names that are too generic or specific for our receiver tables, so we're making that consistent
