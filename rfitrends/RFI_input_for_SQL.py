@@ -25,6 +25,7 @@ import rfitrends.Column_fixes
 import configparser
 from rfitrends.manage_missing_cols import manage_missing_cols
 import json
+import mysql
 
 class FreqOutsideRcvrBoundsError(Exception):
     pass
@@ -199,6 +200,7 @@ def read_file(filepath,main_database,dirty_database, cursor):#use this function 
         data_entry["Database"] = database_value
 
         # If data entry is already in data, we have a repeat value, then we just up the counts
+        
         if data_entry["Frequency_MHz"] in data:
             data[data_entry["Frequency_MHz"]]["Counts"] += 1
         
@@ -206,7 +208,7 @@ def read_file(filepath,main_database,dirty_database, cursor):#use this function 
         else:
             frequency_key = data_entry["Frequency_MHz"]
             del data_entry["Frequency_MHz"]
-            data_entry["Counts"] = 1
+            data_entry['Counts'] = 1
             data[frequency_key] = data_entry
 
 
@@ -434,13 +436,40 @@ def write_to_database(username,password,IP_address,database,main_table,dirty_tab
                     host=IP_address,
                     database=database)
             cursor = cnx.cursor(buffered=True)
-            cursor.execute(add_main_values)
-            cnx.commit()
-            cursor.close()
+            try:
+                cursor.execute(add_main_values)
+                cnx.commit()
+                cursor.close()
+                duplicate_entry = False
+            # If we find a duplicate entry, we will up the counts and average the intensities
+            except mysql.connector.errors.IntegrityError:
+                if (cnx.is_connected()):
+                    cnx.close()
+                cnx = connector.connect(user=username, password=password,
+                    host=IP_address,
+                    database=database)
+                cursor = cnx.cursor(buffered=True)
+                intensity_query = ("SELECT Intensity_Jy from "+str(data_entry["Database"])+" WHERE Frequency_MHz = "+str(frequency_key)+" AND mjd = "+str(formatted_RFI_file.get("mjd")))
+                cursor.execute(intensity_query) 
+                response = cursor.fetchall()
+                old_intensity = float(response[0][0])
+                new_intensity = float(data_entry["Intensity_Jy"])
+                intensity_avg = (old_intensity+new_intensity)/2.0
+                cursor.close()
+                cnx = connector.connect(user=username, password=password,
+                    host=IP_address,
+                    database=database)
+                cursor = cnx.cursor(buffered=True)
+                update_avg_intensity = ("UPDATE "+str(data_entry["Database"]+" SET Counts = "+str(int(data_entry["Counts"])+ 1)+", Intensity_Jy = "+str(intensity_avg)+", Window = \'NaN\', Channel = \'NaN\' where Frequency_MHz = "+str(frequency_key)+" AND mjd = "+str(formatted_RFI_file.get("mjd"))))
+                cursor.execute(update_avg_intensity)
+                cnx.commit()
+                cursor.close()
+                duplicate_entry = True
+            
             # We have some receiver names that are too generic or specific for our receiver tables, so we're making that consistent
             frontend_for_rcvr_table = rfitrends.GBT_receiver_specs.PrepareFrontendInput(formatted_RFI_file.get("frontend"))
             # Putting composite key values into the receiver table
-            if frontend_for_rcvr_table != 'Unknown':
+            if frontend_for_rcvr_table != 'Unknown' and not duplicate_entry:
                 add_receiver_keys = "INSERT INTO "+frontend_for_rcvr_table+" (Frequency_MHz,mjd) VALUES (\""+str(frequency_key)+"\", \""+str(formatted_RFI_file.get("mjd"))+"\");"
                 cnx = connector.connect(user=username, password=password,
                     host=IP_address,
@@ -449,7 +478,6 @@ def write_to_database(username,password,IP_address,database,main_table,dirty_tab
                 cursor.execute(add_receiver_keys)
                 cnx.commit()
                 cursor.close()
-                # This is just adding the most recently processed project id, but this isn't necessarily the most recent one date-wise. Fix
                 cnx = connector.connect(user=username, password=password,
                     host=IP_address,
                     database=database)
@@ -462,6 +490,16 @@ def write_to_database(username,password,IP_address,database,main_table,dirty_tab
                     latest_mjd  = row[1]
                 cursor.close()
                 if latest_mjd < float(formatted_RFI_file.get("mjd")) and (formatted_RFI_file.get("projid") != 'NaN'):
+                    # Before we replace the previous latest project with the current one, we want to drop the table containing the previous latest projects' data:
+                    if latest_projid != "None":
+                        cnx = connector.connect(user=username, password=password,
+                        host=IP_address,
+                        database=database)
+                        cursor = cnx.cursor(buffered=True)
+                        cursor.execute("DROP table "+latest_projid)
+                        cnx.commit()
+                        cursor.close()
+                    # Now we can update the project id:
                     update_latest_projid = "UPDATE latest_projects SET projid=\""+str(formatted_RFI_file.get("projid"))+"\" WHERE frontend = \""+frontend_for_rcvr_table+"\";"
                     cnx = connector.connect(user=username, password=password,
                     host=IP_address,
@@ -478,6 +516,7 @@ def write_to_database(username,password,IP_address,database,main_table,dirty_tab
                     cursor.execute(update_latest_date)
                     cnx.commit()
                     cursor.close()
+                    # The new latest project is the most recent project we just updated
                     latest_projid = str(formatted_RFI_file.get("projid"))
                 if formatted_RFI_file.get("projid") == latest_projid and (formatted_RFI_file.get("projid") != 'NaN'):
                     projid_table_maker = "CREATE TABLE IF NOT EXISTS "+latest_projid+" (Frequency_MHz Decimal(12,6), mjd Decimal(8,3), PRIMARY KEY (Frequency_MHz,mjd));"
@@ -496,9 +535,47 @@ def write_to_database(username,password,IP_address,database,main_table,dirty_tab
                     cursor.execute(projid_populate_table)
                     cnx.commit()
                     cursor.close()
+        """
+        # Now that we've uploaded everything we want from the file, we want to delete any outdated tables that are no longer one of the latest projects           
+        cnx = connector.connect(user=username, password=password,
+                    host=IP_address,
+                    database=database)
+        cursor = cnx.cursor(buffered=True)
+        # Getting the table names
+        cursor.execute("SHOW TABLES")
+        table_values = []
+        for (table_name,) in cursor:
+            table_values.append(table_name)
+        cnx.commit()
+        cursor.close()
+        # Going through each table name one by one:
+        for table_name in table_values:
+            cnx = connector.connect(user=username, password=password,
+                        host=IP_address,
+                        database=database)
+            cursor = cnx.cursor(buffered=True)
+            # Check if the table name exists in the latest_projects table. If not, we should remove it.
+            query = "SELECT EXISTS(SELECT * from latest_projects where projid = \""+table_name+"\")"
+            cursor.execute(query)
+            cnx.commit()
+            exists = cursor.fetchall()[0][0]
+            cursor.close()
+            # Remove table if it is one of the redundant ones. Have to check if it starts with TRFI, otherwise it'd delete our main table and Django tables
+            if exists == 0 and table_name.startswith("TRFI"):
+                cnx = connector.connect(user=username, password=password,
+                        host=IP_address,
+                        database=database)
+                cursor = cnx.cursor(buffered=True)
+                delete_extra_table = "DROP table "+table_name
+                cursor.execute(delete_extra_table)
+                cnx.commit()
+                cursor.close()
+        """
+
 
         print(str(filename)+" uploaded.")
 
+            
     print("All files uploaded.")
 
         
