@@ -9,39 +9,44 @@ from pymysql import connect
 #import pymysql.connect
 from pymysql import cursors
 from pymysql.cursors import Cursor
+from mysql import connector
+import getpass
 
-def gather_list(cursor: Cursor,query):
-    """
-    Compiles data from an SQL query and loads it into a list
-    param cursor: is the information on the SQL connection call
-    param query: is the SQL query to be put into the database
+class connection_manager():
+    def __init__(self,host,database):
+        self.host=host
+        self.database=database
+        while True:
+            try:
+                print("Connecting to database: " + str(self.database) + " on host: " + str(self.host))
+                username = input("Please enter SQL database username: ")
+                password = getpass.getpass("Please enter the password: ",stream=None)
+                connector.connect(user=username, password=password,
+                                    host=host,
+                                    database=database)
+                self.username=username
+                self.password=password
+                break
+            except(connector.errors.ProgrammingError):
+                print("Incorrect username or password. Please try again.")
 
-    returns value_list: the list of information from the SQL database
-    """
+    def execute_command(self,query):
+        cnx = connector.connect(user=self.username, password=self.password,
+                        host=self.host,
+                        database=self.database)
+        cursor = cnx.cursor(buffered=True)
+        cursor.execute(query)
+        cnx.commit()
+        try:
+            result = cursor.fetchall()
+        except(mysql.connector.errors.InterfaceError):
+            result = None
+        finally:
+            cursor.close()
+        return(result)
+    
+    
+    
 
-    cursor.execute(query)
-    value_list = []
-    row = cursor.fetchone() #getting each row
- 
-    while row is not None:
-        value_list.append(row[0])
-        row = cursor.fetchone()
 
-    return(value_list)
 
-def connect_to_database():
-    """
-    Connects to the main SQL database being used for this project
-
-    :returns cnx: the pymysql connection call to the database
-    :returns cursor: the pymysql cursor of the connection call
-    """
-    username = input("Please enter SQL database username... ")
-    password = input("Please enter SQL database password... ")
-    cnx = connect(user=username, password=password,
-                                host='192.33.116.22',
-                                database='jskipper')
-    #cnx is connecting to the sql database
-    cursor = cnx.cursor()
-
-    return(cursor,cnx)

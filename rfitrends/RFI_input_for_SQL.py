@@ -14,7 +14,6 @@ import re
 import julian
 import datetime
 import rfitrends.LST_calculator
-from mysql import connector
 import getpass
 import rfitrends.GBT_receiver_specs
 import sys
@@ -26,6 +25,8 @@ import configparser
 from rfitrends.manage_missing_cols import manage_missing_cols
 import json
 import mysql
+import traceback
+from mysql import connector
 
 class FreqOutsideRcvrBoundsError(Exception):
     pass
@@ -172,8 +173,7 @@ def read_file(filepath,main_database,dirty_database, cursor):#use this function 
     # Removing last " AND "
     search_query = search_query[:-4]
     # Execute query and see if there's a duplicate primary key with the first line and the database. If so, raise error
-    cursor.execute(search_query)
-    myresult = cursor.fetchall()
+    myresult = connection_manager.execute_command(search_query)
     if myresult:
         raise DuplicateValues
     
@@ -349,19 +349,7 @@ def ReadFileLine_ColumnValues(has_header,line_value: list,column_names,filepath)
     # Okay, so there's nothing wrong with the line, so we can actually return a normal line: 
     return data_entry
 
-def prompt_user_login_to_database(IP_address, database):
-    
-    while True:
-        try:
-            print("Connecting to database: " + str(database) + " on host: " + str(IP_address))
-            username = input("Please enter SQL database username: ")
-            password = getpass.getpass("Please enter the password: ",stream=None)
-            connector.connect(user=username, password=password,
-                                host=IP_address,
-                                database=database)
-            return(username, password)
-        except:
-            print("Incorrect username or password. Please try again.")
+
 
 """
 def reconnect(username,password,IP_address,database):
@@ -372,7 +360,8 @@ def reconnect(username,password,IP_address,database):
     return(cursor)
 """
 
-def write_to_database(username,password,IP_address,database,main_table,dirty_table,path,files_to_process = "all"):
+
+def write_to_database(connection_manager,main_table,dirty_table,path,files_to_process = "all"):
 
     list_o_paths = []
 
@@ -391,35 +380,23 @@ def write_to_database(username,password,IP_address,database,main_table,dirty_tab
                 list_o_paths.append(os.path.join(path,filename))
 
 
-    
-    # cursor = reconnect(username,password,IP_address,database)
-    cnx = connector.connect(user=username, password=password,
-                    host=IP_address,
-                    database=database)
-    cursor = cnx.cursor(buffered=True)
-
-
     print("gathering filename set (this takes a few minutes)")
 
-    unique_filename = rfitrends.fxns_output_process.gather_list(cursor, "SELECT DISTINCT filename FROM "+main_table)
+    query_response = connection_manager.execute_command("SELECT DISTINCT filename FROM "+main_table)
+    unique_filenames = [item[0] for item in query_response]
 
-    cursor.close()
 
     #going thru each file one by one
     print("starting to upload files one by one...")
+
     for filenum,filepath in enumerate(list_o_paths):
         print("Extracting file "+str(filenum+1)+" of "+str(len(list_o_paths))+", filename: "+str(filepath))
         filename = filepath.split("/")[-1] # Getting filename from last piece in file path
-        if filename in unique_filename:
+        if filename in unique_filenames:
             print("File already exists in database, moving on to next file.")
             continue
         try:
-            cnx = connector.connect(user=username, password=password,
-                    host=IP_address,
-                    database=database)
-            cursor = cnx.cursor(buffered=True)
-            formatted_RFI_file = read_file(filepath,main_table,dirty_table,cursor)
-            cursor.close()
+            formatted_RFI_file = read_file(filepath,main_table,dirty_table,connection_manager)
         except mysql.connector.Error as error:
             print("{}".format(error))
         except InvalidColumnValues:
@@ -428,172 +405,70 @@ def write_to_database(username,password,IP_address,database,main_table,dirty_tab
         except DuplicateValues:
             print("There is a problem. We are getting values with duplicate times and frequencies. Dropping file. PLEASE INFORM THE MAINTAINER OF THIS FILE SO WE CAN REPLICATE THE BUG.")
             continue
-        
-        for frequency_key,data_entry in formatted_RFI_file.get("Data").items():#for each value in that multi-valued set
-            data_entry = manage_missing_cols(data_entry).getdata_entry()
-            add_main_values = "INSERT INTO "+str(data_entry["Database"])+" (feed,frontend,`azimuth_deg`,projid,`resolution_MHz`,Window,exposure,utc_hrs,date,number_IF_Windows,Channel,backend,mjd,Frequency_MHz,lst,filename,polarization,source,tsys,frequency_type,units,Intensity_Jy,scan_number,`elevation_deg`, `Counts`) VALUES (\""+str(formatted_RFI_file.get("feed"))+"\",\""+str(formatted_RFI_file.get("frontend"))+"\",\""+str(formatted_RFI_file.get("azimuth (deg)"))+"\",\""+str(formatted_RFI_file.get("projid"))+"\",\""+str(formatted_RFI_file.get("frequency_resolution (MHz)"))+"\",\""+str(data_entry["Window"])+"\",\""+str(formatted_RFI_file.get("exposure (sec)"))+"\",\""+str(formatted_RFI_file.get("utc (hrs)"))+"\",\""+str(formatted_RFI_file.get("date"))+"\",\""+str(formatted_RFI_file.get("number_IF_Windows"))+"\",\""+str(data_entry["Channel"])+"\",\""+str(formatted_RFI_file.get("backend"))+"\",\""+str(formatted_RFI_file.get("mjd"))+"\",\""+str(frequency_key)+"\",\""+str(formatted_RFI_file.get("lst (hrs)"))+"\",\""+str(formatted_RFI_file.get("filename"))+"\",\""+str(formatted_RFI_file.get("polarization"))+"\",\""+str(formatted_RFI_file.get("source"))+"\",\""+str(formatted_RFI_file.get("tsys"))+"\",\""+str(formatted_RFI_file.get("frequency_type"))+"\",\""+str(formatted_RFI_file.get("units"))+"\",\""+str(data_entry["Intensity_Jy"])+"\",\""+str(formatted_RFI_file.get("scan_number"))+"\",\""+str(formatted_RFI_file.get("elevation (deg)"))+"\",\""+str(data_entry["Counts"])+"\");"
-            cnx = connector.connect(user=username, password=password,
-                    host=IP_address,
-                    database=database)
-            cursor = cnx.cursor(buffered=True)
-            try:
-                cursor.execute(add_main_values)
-                cnx.commit()
-                cursor.close()
-                duplicate_entry = False
-            # If we find a duplicate entry, we will up the counts and average the intensities
-            except mysql.connector.errors.IntegrityError:
-                if (cnx.is_connected()):
-                    cnx.close()
-                cnx = connector.connect(user=username, password=password,
-                    host=IP_address,
-                    database=database)
-                cursor = cnx.cursor(buffered=True)
-                intensity_query = ("SELECT Intensity_Jy,filename,Counts from "+str(data_entry["Database"])+" WHERE Frequency_MHz = "+str(frequency_key)+" AND mjd = "+str(formatted_RFI_file.get("mjd")))
-                cursor.execute(intensity_query) 
-                responses = cursor.fetchall()
-                for response in responses:
-                    # Need to weight the 
-                    current_counts = response[2]
-                    old_intensity = float(response[0])
-                    new_intensity = float(data_entry["Intensity_Jy"])
-                    intensity_avg = (new_intensity+(old_intensity*float(current_counts)))/2.0
-                    cursor.close()
-                    old_filename = response[1]
-                    if old_filename != "Duplicate":
-                        cnx = connector.connect(user=username, password=password,
-                            host=IP_address,
-                            database=database)
-                        cursor = cnx.cursor(buffered=True)
-                        insert_old_duplicate_data = ("INSERT INTO duplicate_data_catalog (Frequency_MHz,Intensity_Jy,filename) VALUES (\'"+str(frequency_key)+"\',\'"+str(old_intensity)+"\',\'"+str(old_filename)+"\')")
-                        cursor.execute(insert_old_duplicate_data)
-                        cnx.commit()
+        try:
+            for frequency_key,data_entry in formatted_RFI_file.get("Data").items():#for each value in that multi-valued set
+                data_entry = manage_missing_cols(data_entry).getdata_entry()
+                add_main_values = "INSERT INTO "+str(data_entry["Database"])+" (feed,frontend,`azimuth_deg`,projid,`resolution_MHz`,Window,exposure,utc_hrs,date,number_IF_Windows,Channel,backend,mjd,Frequency_MHz,lst,filename,polarization,source,tsys,frequency_type,units,Intensity_Jy,scan_number,`elevation_deg`, `Counts`) VALUES (\""+str(formatted_RFI_file.get("feed"))+"\",\""+str(formatted_RFI_file.get("frontend"))+"\",\""+str(formatted_RFI_file.get("azimuth (deg)"))+"\",\""+str(formatted_RFI_file.get("projid"))+"\",\""+str(formatted_RFI_file.get("frequency_resolution (MHz)"))+"\",\""+str(data_entry["Window"])+"\",\""+str(formatted_RFI_file.get("exposure (sec)"))+"\",\""+str(formatted_RFI_file.get("utc (hrs)"))+"\",\""+str(formatted_RFI_file.get("date"))+"\",\""+str(formatted_RFI_file.get("number_IF_Windows"))+"\",\""+str(data_entry["Channel"])+"\",\""+str(formatted_RFI_file.get("backend"))+"\",\""+str(formatted_RFI_file.get("mjd"))+"\",\""+str(frequency_key)+"\",\""+str(formatted_RFI_file.get("lst (hrs)"))+"\",\""+str(formatted_RFI_file.get("filename"))+"\",\""+str(formatted_RFI_file.get("polarization"))+"\",\""+str(formatted_RFI_file.get("source"))+"\",\""+str(formatted_RFI_file.get("tsys"))+"\",\""+str(formatted_RFI_file.get("frequency_type"))+"\",\""+str(formatted_RFI_file.get("units"))+"\",\""+str(data_entry["Intensity_Jy"])+"\",\""+str(formatted_RFI_file.get("scan_number"))+"\",\""+str(formatted_RFI_file.get("elevation (deg)"))+"\",\""+str(data_entry["Counts"])+"\");"
+                try:
+                    _ = connection_manager.execute_command(add_main_values)
+                    duplicate_entry = False
+                # If we find a duplicate entry, we will up the counts and average the intensities
+                except mysql.connector.errors.IntegrityError:
+                    intensity_query = ("SELECT Intensity_Jy,filename,Counts from "+str(data_entry["Database"])+" WHERE Frequency_MHz = "+str(frequency_key)+" AND mjd = "+str(formatted_RFI_file.get("mjd")))
+                    responses = connection_manager.execute_command(intensity_query)
+                    for response in responses:
+                        # Need to weight the 
+                        current_counts = response[2]
+                        old_intensity = float(response[0])
+                        new_intensity = float(data_entry["Intensity_Jy"])
+                        intensity_avg = (new_intensity+(old_intensity*float(current_counts)))/2.0
                         cursor.close()
-                    cnx = connector.connect(user=username, password=password,
-                        host=IP_address,
-                        database=database)
-                    cursor = cnx.cursor(buffered=True)
-                    update_avg_intensity = ("UPDATE "+str(data_entry["Database"]+" SET Counts = "+str(int(current_counts)+ 1)+", Intensity_Jy = "+str(intensity_avg)+", Window = \'NaN\', Channel = \'NaN\', filename = \'Duplicate\' where Frequency_MHz = "+str(frequency_key)+" AND mjd = "+str(formatted_RFI_file.get("mjd"))))
-                    cursor.execute(update_avg_intensity)
-                    cnx.commit()
-                    cursor.close()
-                    cnx = connector.connect(user=username, password=password,
-                        host=IP_address,
-                        database=database)
-                    cursor = cnx.cursor(buffered=True)
-                    insert_new_duplicate_data = ("INSERT INTO duplicate_data_catalog (Frequency_MHz,Intensity_Jy,filename) VALUES (\'"+str(frequency_key)+"\',\'"+str(new_intensity)+"\',\'"+str(formatted_RFI_file.get("filename"))+"\')")
-                    cursor.execute(insert_new_duplicate_data)
-                    cnx.commit()
-                    cursor.close()
-                    
-                duplicate_entry = True
-            
-            # We have some receiver names that are too generic or specific for our receiver tables, so we're making that consistent
-            frontend_for_rcvr_table = rfitrends.GBT_receiver_specs.PrepareFrontendInput(formatted_RFI_file.get("frontend"))
-            # Putting composite key values into the receiver table
-            if frontend_for_rcvr_table != 'Unknown' and not duplicate_entry:
-                add_receiver_keys = "INSERT INTO "+frontend_for_rcvr_table+" (Frequency_MHz,mjd) VALUES (\""+str(frequency_key)+"\", \""+str(formatted_RFI_file.get("mjd"))+"\");"
-                cnx = connector.connect(user=username, password=password,
-                    host=IP_address,
-                    database=database)
-                cursor = cnx.cursor(buffered=True)
-                cursor.execute(add_receiver_keys)
-                cnx.commit()
-                cursor.close()
-                cnx = connector.connect(user=username, password=password,
-                    host=IP_address,
-                    database=database)
-                cursor = cnx.cursor(buffered=True)
-                cursor.execute("SELECT projid,mjd from latest_projects WHERE frontend= \""+frontend_for_rcvr_table+"\"")
-                cnx.commit()
-                rows = cursor.fetchall()
-                for row in rows: 
-                    latest_projid = row[0]
-                    latest_mjd  = row[1]
-                cursor.close()
-                if latest_mjd < float(formatted_RFI_file.get("mjd")) and (formatted_RFI_file.get("projid") != 'NaN'):
-                    # Before we replace the previous latest project with the current one, we want to drop the table containing the previous latest projects' data:
-                    if latest_projid != "None":
-                        cnx = connector.connect(user=username, password=password,
-                        host=IP_address,
-                        database=database)
-                        cursor = cnx.cursor(buffered=True)
-                        cursor.execute("DROP table "+latest_projid)
-                        cnx.commit()
-                        cursor.close()
-                    # Now we can update the project id:
-                    update_latest_projid = "UPDATE latest_projects SET projid=\""+str(formatted_RFI_file.get("projid"))+"\" WHERE frontend = \""+frontend_for_rcvr_table+"\";"
-                    cnx = connector.connect(user=username, password=password,
-                    host=IP_address,
-                    database=database)
-                    cursor = cnx.cursor(buffered=True)
-                    cursor.execute(update_latest_projid)
-                    cnx.commit()
-                    cursor.close()
-                    update_latest_date = "UPDATE latest_projects SET mjd=\""+str(formatted_RFI_file.get("mjd"))+"\" WHERE frontend = \""+frontend_for_rcvr_table+"\";"
-                    cnx = connector.connect(user=username, password=password,
-                    host=IP_address,
-                    database=database)
-                    cursor = cnx.cursor(buffered=True)
-                    cursor.execute(update_latest_date)
-                    cnx.commit()
-                    cursor.close()
-                    # The new latest project is the most recent project we just updated
-                    latest_projid = str(formatted_RFI_file.get("projid"))
-                if formatted_RFI_file.get("projid") == latest_projid and (formatted_RFI_file.get("projid") != 'NaN'):
-                    projid_table_maker = "CREATE TABLE IF NOT EXISTS "+latest_projid+" (Frequency_MHz Decimal(12,6), mjd Decimal(8,3), PRIMARY KEY (Frequency_MHz,mjd));"
-                    cnx = connector.connect(user=username, password=password,
-                    host=IP_address,
-                    database=database)
-                    cursor = cnx.cursor(buffered=True)
-                    cursor.execute(projid_table_maker)
-                    cnx.commit()
-                    cursor.close()
-                    projid_populate_table = "INSERT INTO "+formatted_RFI_file.get("projid")+" (Frequency_MHz,mjd) VALUES (\""+str(frequency_key)+"\", \""+str(formatted_RFI_file.get("mjd"))+"\");"
-                    cnx = connector.connect(user=username, password=password,
-                    host=IP_address,
-                    database=database)
-                    cursor = cnx.cursor(buffered=True)
-                    cursor.execute(projid_populate_table)
-                    cnx.commit()
-                    cursor.close()
-        """
-        # Now that we've uploaded everything we want from the file, we want to delete any outdated tables that are no longer one of the latest projects           
-        cnx = connector.connect(user=username, password=password,
-                    host=IP_address,
-                    database=database)
-        cursor = cnx.cursor(buffered=True)
-        # Getting the table names
-        cursor.execute("SHOW TABLES")
-        table_values = []
-        for (table_name,) in cursor:
-            table_values.append(table_name)
-        cnx.commit()
-        cursor.close()
-        # Going through each table name one by one:
-        for table_name in table_values:
-            cnx = connector.connect(user=username, password=password,
-                        host=IP_address,
-                        database=database)
-            cursor = cnx.cursor(buffered=True)
-            # Check if the table name exists in the latest_projects table. If not, we should remove it.
-            query = "SELECT EXISTS(SELECT * from latest_projects where projid = \""+table_name+"\")"
-            cursor.execute(query)
-            cnx.commit()
-            exists = cursor.fetchall()[0][0]
-            cursor.close()
-            # Remove table if it is one of the redundant ones. Have to check if it starts with TRFI, otherwise it'd delete our main table and Django tables
-            if exists == 0 and table_name.startswith("TRFI"):
-                cnx = connector.connect(user=username, password=password,
-                        host=IP_address,
-                        database=database)
-                cursor = cnx.cursor(buffered=True)
-                delete_extra_table = "DROP table "+table_name
-                cursor.execute(delete_extra_table)
-                cnx.commit()
-                cursor.close()
-        """
-
+                        old_filename = response[1]
+                        if old_filename != "Duplicate":
+                            insert_old_duplicate_data = ("INSERT INTO duplicate_data_catalog (Frequency_MHz,Intensity_Jy,filename) VALUES (\'"+str(frequency_key)+"\',\'"+str(old_intensity)+"\',\'"+str(old_filename)+"\')")
+                            _ = connection_manager.execute_command(insert_old_duplicate_data)
+                        update_avg_intensity = ("UPDATE "+str(data_entry["Database"]+" SET Counts = "+str(int(current_counts)+ 1)+", Intensity_Jy = "+str(intensity_avg)+", Window = \'NaN\', Channel = \'NaN\', filename = \'Duplicate\' where Frequency_MHz = "+str(frequency_key)+" AND mjd = "+str(formatted_RFI_file.get("mjd"))))
+                        _ = connection_manager.execute_command(update_avg_intensity)
+                        insert_new_duplicate_data = ("INSERT INTO duplicate_data_catalog (Frequency_MHz,Intensity_Jy,filename) VALUES (\'"+str(frequency_key)+"\',\'"+str(new_intensity)+"\',\'"+str(formatted_RFI_file.get("filename"))+"\')")
+                        _ = connection_manager.execute_command(insert_new_duplicate_data)
+                        
+                    duplicate_entry = True
+                print("Duplicate Entry status: "+str(duplicate_entry))
+                # We have some receiver names that are too generic or specific for our receiver tables, so we're making that consistent
+                frontend_for_rcvr_table = rfitrends.GBT_receiver_specs.PrepareFrontendInput(formatted_RFI_file.get("frontend"))
+                # Putting composite key values into the receiver table
+                if frontend_for_rcvr_table != 'Unknown' and not duplicate_entry:
+                    add_receiver_keys = "INSERT INTO "+frontend_for_rcvr_table+" (Frequency_MHz,mjd) VALUES (\""+str(frequency_key)+"\", \""+str(formatted_RFI_file.get("mjd"))+"\");"
+                    _ = connection_manager.execute_command(add_receiver_keys)
+                    rows = connection_manager.execute_command("SELECT projid,mjd from latest_projects WHERE frontend= \""+frontend_for_rcvr_table+"\"")
+                    for row in rows: 
+                        latest_projid = row[0]
+                        latest_mjd  = row[1]
+                    if latest_mjd < float(formatted_RFI_file.get("mjd")) and (formatted_RFI_file.get("projid") != 'NaN'):
+                        # Before we replace the previous latest project with the current one, we want to drop the table containing the previous latest projects' data:
+                        if latest_projid != "None":
+                            _ = connection_manager.execute_command("DROP table "+latest_projid)
+                        # Now we can update the project id:
+                        update_latest_projid = "UPDATE latest_projects SET projid=\""+str(formatted_RFI_file.get("projid"))+"\" WHERE frontend = \""+frontend_for_rcvr_table+"\";"
+                        _ = connection_manager.execute_command(update_latest_projid)
+                        update_latest_date = "UPDATE latest_projects SET mjd=\""+str(formatted_RFI_file.get("mjd"))+"\" WHERE frontend = \""+frontend_for_rcvr_table+"\";"
+                        _ = connection_manager.execute_command(update_latest_date)
+                        # The new latest project is the most recent project we just updated
+                        latest_projid = str(formatted_RFI_file.get("projid"))
+                    if formatted_RFI_file.get("projid") == latest_projid and (formatted_RFI_file.get("projid") != 'NaN'):
+                        projid_table_maker = "CREATE TABLE IF NOT EXISTS "+latest_projid+" (Frequency_MHz Decimal(12,6), mjd Decimal(8,3), PRIMARY KEY (Frequency_MHz,mjd));"
+                        _ = connection_manager.execute_command(projid_table_maker)
+                        projid_populate_table = "INSERT INTO "+formatted_RFI_file.get("projid")+" (Frequency_MHz,mjd) VALUES (\""+str(frequency_key)+"\", \""+str(formatted_RFI_file.get("mjd"))+"\");"
+                        _ = connection_manager.execute_command(projid_populate_table)
+        except mysql.connector.errors.IntegrityError as Error:
+            print("There was an error, here is the message: ")
+            traceback.print_tb(Error.__traceback__)
+            # print(Error)
+            print("Frequency: "+frequency_key)
+            print("Data: "+str(data_entry))
+            last_line_query = ("SELECT * from "+data_entry["Database"]+" WHERE mjd = "+formatted_RFI_file.get("mjd")+" and Frequency_MHz = "+frequency_key)
+            _ = connection_manager.execute_command(last_line_query)
+            sys.exit()
 
         print(str(filename)+" uploaded.")
 
@@ -625,9 +500,9 @@ if __name__ == "__main__":
     # The likely path to use for filepath_to_rfi_scans if looking at most recent (last 6 months) of RFI data for GBT:
     #path = '/home/www.gb.nrao.edu/content/IPG/rfiarchive_files/GBTDataImages'
     path = args.path   
-    username, password = prompt_user_login_to_database(IP_address,database)
     config = configparser.ConfigParser()
-    write_to_database(username, password, IP_address, database, main_table,dirty_table,path)
+    connection_manager = rfitrends.fxns_output_process.connection_manager(IP_address,database)
+    write_to_database(connection_manager, main_table,dirty_table,path)
 
 
         
