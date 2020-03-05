@@ -361,15 +361,14 @@ def reconnect(username,password,IP_address,database):
 """
 
 
-def write_to_database(connection_manager,main_table,dirty_table,path,files_to_process = "all"):
+def gather_filepaths_to_process(path,files_to_process = "all"):
 
-    list_o_paths = []
-
+    filepaths = []
     if files_to_process == "all":
     # making a list of all of the .txt files in the directory so I can just cycle through each full path:
         for filename in os.listdir(path):
             if filename.endswith(".txt") and filename != "URLs.txt":# If the files are ones we are actually interested in
-                list_o_paths.append(os.path.join(path,filename))
+                filepaths.append(os.path.join(path,filename))
                 continue
     else: 
         # For each file in the path given
@@ -377,20 +376,21 @@ def write_to_database(connection_manager,main_table,dirty_table,path,files_to_pr
             # If there is any element from files_to_process contained in the current filename, it is a file to process. I.E. if "TRFI_052819_L1" is 
             # An element in files_to_process, and filename is "TRFI_052819_L1_rfiscan1_s0001_f001_Linr_az357_el045.txt" then it will be included as a file to process
             if any(RFI_file in filename for RFI_file in files_to_process):
-                list_o_paths.append(os.path.join(path,filename))
+                filepaths.append(os.path.join(path,filename))
+    return(filepaths)
 
-
+def gather_processed_filenames(connection_manager,clean_table_name):
     print("gathering filename set (this takes a few minutes)")
-
     query_response = connection_manager.execute_command("SELECT DISTINCT filename FROM "+main_table)
     unique_filenames = [item[0] for item in query_response]
 
+    return(unique_filenames)
+    
 
-    #going thru each file one by one
-    print("starting to upload files one by one...")
+def upload_files(filepaths,connection_manager,unique_filenames):
 
-    for filenum,filepath in enumerate(list_o_paths):
-        print("Extracting file "+str(filenum+1)+" of "+str(len(list_o_paths))+", filename: "+str(filepath))
+    for filenum,filepath in enumerate(filepaths):
+        print("Extracting file "+str(filenum+1)+" of "+str(len(filepaths))+", filename: "+str(filepath))
         filename = filepath.split("/")[-1] # Getting filename from last piece in file path
         if filename in unique_filenames:
             print("File already exists in database, moving on to next file.")
@@ -407,6 +407,9 @@ def write_to_database(connection_manager,main_table,dirty_table,path,files_to_pr
             continue
         try:
             for frequency_key,data_entry in formatted_RFI_file.get("Data").items():#for each value in that multi-valued set
+                if math.isclose(float(frequency_key),1787.9980,abs_tol=1e-4):
+                    print("hello")
+                    pass
                 data_entry = manage_missing_cols(data_entry).getdata_entry()
                 add_main_values = "INSERT INTO "+str(data_entry["Database"])+" (feed,frontend,`azimuth_deg`,projid,`resolution_MHz`,Window,exposure,utc_hrs,date,number_IF_Windows,Channel,backend,mjd,Frequency_MHz,lst,filename,polarization,source,tsys,frequency_type,units,Intensity_Jy,scan_number,`elevation_deg`, `Counts`) VALUES (\""+str(formatted_RFI_file.get("feed"))+"\",\""+str(formatted_RFI_file.get("frontend"))+"\",\""+str(formatted_RFI_file.get("azimuth (deg)"))+"\",\""+str(formatted_RFI_file.get("projid"))+"\",\""+str(formatted_RFI_file.get("frequency_resolution (MHz)"))+"\",\""+str(data_entry["Window"])+"\",\""+str(formatted_RFI_file.get("exposure (sec)"))+"\",\""+str(formatted_RFI_file.get("utc (hrs)"))+"\",\""+str(formatted_RFI_file.get("date"))+"\",\""+str(formatted_RFI_file.get("number_IF_Windows"))+"\",\""+str(data_entry["Channel"])+"\",\""+str(formatted_RFI_file.get("backend"))+"\",\""+str(formatted_RFI_file.get("mjd"))+"\",\""+str(frequency_key)+"\",\""+str(formatted_RFI_file.get("lst (hrs)"))+"\",\""+str(formatted_RFI_file.get("filename"))+"\",\""+str(formatted_RFI_file.get("polarization"))+"\",\""+str(formatted_RFI_file.get("source"))+"\",\""+str(formatted_RFI_file.get("tsys"))+"\",\""+str(formatted_RFI_file.get("frequency_type"))+"\",\""+str(formatted_RFI_file.get("units"))+"\",\""+str(data_entry["Intensity_Jy"])+"\",\""+str(formatted_RFI_file.get("scan_number"))+"\",\""+str(formatted_RFI_file.get("elevation (deg)"))+"\",\""+str(data_entry["Counts"])+"\");"
                 try:
@@ -421,8 +424,7 @@ def write_to_database(connection_manager,main_table,dirty_table,path,files_to_pr
                         current_counts = response[2]
                         old_intensity = float(response[0])
                         new_intensity = float(data_entry["Intensity_Jy"])
-                        intensity_avg = (new_intensity+(old_intensity*float(current_counts)))/2.0
-                        cursor.close()
+                        intensity_avg = (new_intensity+(old_intensity*float(current_counts)))/(float(current_counts)+1.0)
                         old_filename = response[1]
                         if old_filename != "Duplicate":
                             insert_old_duplicate_data = ("INSERT INTO duplicate_data_catalog (Frequency_MHz,Intensity_Jy,filename) VALUES (\'"+str(frequency_key)+"\',\'"+str(old_intensity)+"\',\'"+str(old_filename)+"\')")
@@ -431,35 +433,16 @@ def write_to_database(connection_manager,main_table,dirty_table,path,files_to_pr
                         _ = connection_manager.execute_command(update_avg_intensity)
                         insert_new_duplicate_data = ("INSERT INTO duplicate_data_catalog (Frequency_MHz,Intensity_Jy,filename) VALUES (\'"+str(frequency_key)+"\',\'"+str(new_intensity)+"\',\'"+str(formatted_RFI_file.get("filename"))+"\')")
                         _ = connection_manager.execute_command(insert_new_duplicate_data)
+
                         
                     duplicate_entry = True
-                print("Duplicate Entry status: "+str(duplicate_entry))
+                # print("Duplicate Entry status: "+str(duplicate_entry))
                 # We have some receiver names that are too generic or specific for our receiver tables, so we're making that consistent
                 frontend_for_rcvr_table = rfitrends.GBT_receiver_specs.PrepareFrontendInput(formatted_RFI_file.get("frontend"))
                 # Putting composite key values into the receiver table
                 if frontend_for_rcvr_table != 'Unknown' and not duplicate_entry:
-                    add_receiver_keys = "INSERT INTO "+frontend_for_rcvr_table+" (Frequency_MHz,mjd) VALUES (\""+str(frequency_key)+"\", \""+str(formatted_RFI_file.get("mjd"))+"\");"
-                    _ = connection_manager.execute_command(add_receiver_keys)
-                    rows = connection_manager.execute_command("SELECT projid,mjd from latest_projects WHERE frontend= \""+frontend_for_rcvr_table+"\"")
-                    for row in rows: 
-                        latest_projid = row[0]
-                        latest_mjd  = row[1]
-                    if latest_mjd < float(formatted_RFI_file.get("mjd")) and (formatted_RFI_file.get("projid") != 'NaN'):
-                        # Before we replace the previous latest project with the current one, we want to drop the table containing the previous latest projects' data:
-                        if latest_projid != "None":
-                            _ = connection_manager.execute_command("DROP table "+latest_projid)
-                        # Now we can update the project id:
-                        update_latest_projid = "UPDATE latest_projects SET projid=\""+str(formatted_RFI_file.get("projid"))+"\" WHERE frontend = \""+frontend_for_rcvr_table+"\";"
-                        _ = connection_manager.execute_command(update_latest_projid)
-                        update_latest_date = "UPDATE latest_projects SET mjd=\""+str(formatted_RFI_file.get("mjd"))+"\" WHERE frontend = \""+frontend_for_rcvr_table+"\";"
-                        _ = connection_manager.execute_command(update_latest_date)
-                        # The new latest project is the most recent project we just updated
-                        latest_projid = str(formatted_RFI_file.get("projid"))
-                    if formatted_RFI_file.get("projid") == latest_projid and (formatted_RFI_file.get("projid") != 'NaN'):
-                        projid_table_maker = "CREATE TABLE IF NOT EXISTS "+latest_projid+" (Frequency_MHz Decimal(12,6), mjd Decimal(8,3), PRIMARY KEY (Frequency_MHz,mjd));"
-                        _ = connection_manager.execute_command(projid_table_maker)
-                        projid_populate_table = "INSERT INTO "+formatted_RFI_file.get("projid")+" (Frequency_MHz,mjd) VALUES (\""+str(frequency_key)+"\", \""+str(formatted_RFI_file.get("mjd"))+"\");"
-                        _ = connection_manager.execute_command(projid_populate_table)
+                    update_caching_tables(frequency_key,data_entry,frontend_for_rcvr_table,connection_manager,formatted_RFI_file)
+
         except mysql.connector.errors.IntegrityError as Error:
             print("There was an error, here is the message: ")
             traceback.print_tb(Error.__traceback__)
@@ -472,13 +455,29 @@ def write_to_database(connection_manager,main_table,dirty_table,path,files_to_pr
 
         print(str(filename)+" uploaded.")
 
-            
-    print("All files uploaded.")
-
-        
-
-
-    cnx.close()
+def update_caching_tables(frequency_key,data_entry,frontend_for_rcvr_table,connection_manager,formatted_RFI_file): 
+    add_receiver_keys = "INSERT INTO "+frontend_for_rcvr_table+" (Frequency_MHz,mjd) VALUES (\""+str(frequency_key)+"\", \""+str(formatted_RFI_file.get("mjd"))+"\");"
+    _ = connection_manager.execute_command(add_receiver_keys)
+    rows = connection_manager.execute_command("SELECT projid,mjd from latest_projects WHERE frontend= \""+frontend_for_rcvr_table+"\"")
+    for row in rows: 
+        latest_projid = row[0]
+        latest_mjd  = row[1]
+    if latest_mjd < float(formatted_RFI_file.get("mjd")) and (formatted_RFI_file.get("projid") != 'NaN'):
+        # Before we replace the previous latest project with the current one, we want to drop the table containing the previous latest projects' data:
+        if latest_projid != "None":
+            _ = connection_manager.execute_command("DROP table "+latest_projid)
+        # Now we can update the project id:
+        update_latest_projid = "UPDATE latest_projects SET projid=\""+str(formatted_RFI_file.get("projid"))+"\" WHERE frontend = \""+frontend_for_rcvr_table+"\";"
+        _ = connection_manager.execute_command(update_latest_projid)
+        update_latest_date = "UPDATE latest_projects SET mjd=\""+str(formatted_RFI_file.get("mjd"))+"\" WHERE frontend = \""+frontend_for_rcvr_table+"\";"
+        _ = connection_manager.execute_command(update_latest_date)
+        # The new latest project is the most recent project we just updated
+        latest_projid = str(formatted_RFI_file.get("projid"))
+    if formatted_RFI_file.get("projid") == latest_projid and (formatted_RFI_file.get("projid") != 'NaN'):
+        projid_table_maker = "CREATE TABLE IF NOT EXISTS "+latest_projid+" (Frequency_MHz Decimal(12,6), mjd Decimal(8,3), PRIMARY KEY (Frequency_MHz,mjd));"
+        _ = connection_manager.execute_command(projid_table_maker)
+        projid_populate_table = "INSERT INTO "+formatted_RFI_file.get("projid")+" (Frequency_MHz,mjd) VALUES (\""+str(frequency_key)+"\", \""+str(formatted_RFI_file.get("mjd"))+"\");"
+        _ = connection_manager.execute_command(projid_populate_table)
 
 if __name__ == "__main__":
     import ptvsd 
@@ -502,7 +501,12 @@ if __name__ == "__main__":
     path = args.path   
     config = configparser.ConfigParser()
     connection_manager = rfitrends.fxns_output_process.connection_manager(IP_address,database)
-    write_to_database(connection_manager, main_table,dirty_table,path)
+    filepaths_to_process = gather_filepaths_to_process(path)
+    processed_filenames = gather_processed_filenames(connection_manager,main_table)
+    #going thru each file one by one
+    print("starting to upload files one by one...")
+    upload_files(filepaths_to_process,connection_manager,processed_filenames)
+    print("All files uploaded.")
 
 
         

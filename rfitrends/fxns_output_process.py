@@ -39,7 +39,7 @@ class connection_manager():
         cnx.commit()
         try:
             result = cursor.fetchall()
-        except(mysql.connector.errors.InterfaceError):
+        except(connector.errors.InterfaceError):
             result = None
         finally:
             cursor.close()
