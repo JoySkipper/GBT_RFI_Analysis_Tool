@@ -387,7 +387,7 @@ def gather_processed_filenames(connection_manager,clean_table_name):
     return(unique_filenames)
     
 
-def upload_files(filepaths,connection_manager,unique_filenames):
+def upload_files(filepaths,connection_manager,unique_filenames,main_table,dirty_table):
 
     for filenum,filepath in enumerate(filepaths):
         print("Extracting file "+str(filenum+1)+" of "+str(len(filepaths))+", filename: "+str(filepath))
@@ -407,9 +407,6 @@ def upload_files(filepaths,connection_manager,unique_filenames):
             continue
         try:
             for frequency_key,data_entry in formatted_RFI_file.get("Data").items():#for each value in that multi-valued set
-                if math.isclose(float(frequency_key),1787.9980,abs_tol=1e-4):
-                    print("hello")
-                    pass
                 data_entry = manage_missing_cols(data_entry).getdata_entry()
                 add_main_values = "INSERT INTO "+str(data_entry["Database"])+" (feed,frontend,`azimuth_deg`,projid,`resolution_MHz`,Window,exposure,utc_hrs,date,number_IF_Windows,Channel,backend,mjd,Frequency_MHz,lst,filename,polarization,source,tsys,frequency_type,units,Intensity_Jy,scan_number,`elevation_deg`, `Counts`) VALUES (\""+str(formatted_RFI_file.get("feed"))+"\",\""+str(formatted_RFI_file.get("frontend"))+"\",\""+str(formatted_RFI_file.get("azimuth (deg)"))+"\",\""+str(formatted_RFI_file.get("projid"))+"\",\""+str(formatted_RFI_file.get("frequency_resolution (MHz)"))+"\",\""+str(data_entry["Window"])+"\",\""+str(formatted_RFI_file.get("exposure (sec)"))+"\",\""+str(formatted_RFI_file.get("utc (hrs)"))+"\",\""+str(formatted_RFI_file.get("date"))+"\",\""+str(formatted_RFI_file.get("number_IF_Windows"))+"\",\""+str(data_entry["Channel"])+"\",\""+str(formatted_RFI_file.get("backend"))+"\",\""+str(formatted_RFI_file.get("mjd"))+"\",\""+str(frequency_key)+"\",\""+str(formatted_RFI_file.get("lst (hrs)"))+"\",\""+str(formatted_RFI_file.get("filename"))+"\",\""+str(formatted_RFI_file.get("polarization"))+"\",\""+str(formatted_RFI_file.get("source"))+"\",\""+str(formatted_RFI_file.get("tsys"))+"\",\""+str(formatted_RFI_file.get("frequency_type"))+"\",\""+str(formatted_RFI_file.get("units"))+"\",\""+str(data_entry["Intensity_Jy"])+"\",\""+str(formatted_RFI_file.get("scan_number"))+"\",\""+str(formatted_RFI_file.get("elevation (deg)"))+"\",\""+str(data_entry["Counts"])+"\");"
                 try:
@@ -440,7 +437,7 @@ def upload_files(filepaths,connection_manager,unique_filenames):
                 # We have some receiver names that are too generic or specific for our receiver tables, so we're making that consistent
                 frontend_for_rcvr_table = rfitrends.GBT_receiver_specs.PrepareFrontendInput(formatted_RFI_file.get("frontend"))
                 # Putting composite key values into the receiver table
-                if frontend_for_rcvr_table != 'Unknown' and not duplicate_entry:
+                if frontend_for_rcvr_table != 'Unknown' and not duplicate_entry and data_entry["Database"] != dirty_table:
                     update_caching_tables(frequency_key,data_entry,frontend_for_rcvr_table,connection_manager,formatted_RFI_file)
 
         except mysql.connector.errors.IntegrityError as Error:
@@ -505,7 +502,7 @@ if __name__ == "__main__":
     processed_filenames = gather_processed_filenames(connection_manager,main_table)
     #going thru each file one by one
     print("starting to upload files one by one...")
-    upload_files(filepaths_to_process,connection_manager,processed_filenames)
+    upload_files(filepaths_to_process,connection_manager,processed_filenames,main_table,dirty_table)
     print("All files uploaded.")
 
 
