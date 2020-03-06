@@ -41,6 +41,8 @@ class InvalidColumnValues(Exception):
 class InvalidIntensity(Exception):
     pass
 
+class DuplicateValues(Exception):
+    pass
 
 ########### File Gathering Functions ##########
 
@@ -69,22 +71,6 @@ def gather_filepaths_to_process(path,files_to_process = "all"):
             if any(RFI_file in filename for RFI_file in files_to_process):
                 filepaths.append(os.path.join(path,filename))
     return(filepaths)
-
-def gather_processed_filenames(connection_manager,clean_table_name):
-    """
-    Queries and gathers a list of filenames that have already been processed into the given database.  
-
-    param connection_manager : a class handling the connection to the SQL database
-    param clean_table_name : the table containing clean, processed files 
-    returns unique_filenames: a list containing all the files that have been processed into the database
-    """
-    print("gathering filename set (this takes a few minutes)")
-    # Gathering all the files that have already been processed from querying the database
-    query_response = connection_manager.get_distinct_filenames(main_table)
-    unique_filenames = [item[0] for item in query_response]
-
-    return(unique_filenames)
-
 
 
 ########### Singular File processing functions ##############
@@ -122,14 +108,60 @@ def read_file(filepath,main_database,dirty_database, connection_manager):
 
     # If it has a header, we want to process it, if it doesn't, we will extrapolate what info we can
     if has_header:
-        all_file_info = process_header(f)
+        all_file_info,first_data_line = process_header(f)
     else:
         all_file_info = extrapolate_header(f.name)
+        # Get the first line
+        first_data_line = f.readline()
+        # Set the reader back to the first line
+        f.seek(0)
 
     # Verifies that frontend given exists, otherwise labels it as Unknown. 
     all_file_info["frontend"] = rfitrends.GBT_receiver_specs.FrontendVerification(all_file_info["frontend"])
     # Pulls filename from full path to filename
     all_file_info["filename"] = filepath.split("/")[-1]
+
+    # Loop until we find the first valid data line, which we need to lookup the primary key:
+    last_pos = f.tell()
+    if first_data_line == '\n':
+        first_data_line = f.readline()
+    while True:
+        try:
+            first_data_entry = ReadFileLine_ColumnValues(has_header, first_data_line.strip().split(), all_file_info['Column names'], f.name)
+        except InvalidIntensity:
+            # If the velocity is invalid, then continue to read the next line:
+            last_pos = f.tell()
+            first_data_line = f.readline()
+            continue    
+        break
+    f.seek(last_pos)
+
+    try:
+        first_data_entry["Frequency_MHz"] = FrequencyVerification(first_data_entry["Frequency_MHz"],all_file_info)    
+    # IF we do get frequencies outside of the bounds that we want, we skip to the next line
+    except FreqOutsideRcvrBoundsError:
+        # This is a dirty table. The error handling below will catch it, so we just need the old frequency value. We mainly want the verification and change 
+        # Here in case the line is valid and needs tweaking (GHz to MHz, for example) 
+        # Assumes that if one value in a file is bad, that they all will be
+        pass
+
+    first_line_entry = dict(all_file_info)
+    first_line_entry.update(first_data_entry)
+    # Getting primary composite key from config file:
+    config = configparser.ConfigParser()
+    config.read("rfitrends.conf")
+    composite_keys = json.loads(config['Mandatory Fields']['primary_composite_key'])
+    search_query = "SELECT * from "+main_database+" WHERE "
+    # Searching by all the values in the composite key
+    for composite_key in composite_keys:
+        search_query += composite_key+" = "+str(first_line_entry[composite_key])+" AND "
+    # Removing last " AND "
+    search_query = search_query[:-4]
+    # Execute query and see if there's a duplicate primary key with the first line and the database. If so, raise error
+    myresult = connection_manager.execute_command(search_query)
+    if myresult:
+        raise DuplicateValues
+
 
     # Going through each line in the file one by one:
     for data_line in f:
@@ -228,7 +260,7 @@ def process_header(file):
         previous_line_position = f.tell()
         line = f.readline()
 
-    return(header)
+    return(header,first_data_line)
 
 def extrapolate_header(filepath):
     """
@@ -381,7 +413,7 @@ def FrequencyVerification(frequency_value,header):
 
 ############ Functions that work to upload data to the database ####################
 
-def upload_files(filepaths,connection_manager,unique_filenames,main_table,dirty_table):
+def upload_files(filepaths,connection_manager,main_table,dirty_table):
     """
     Uploads all the processed data into the appropriate tables for a given database 
 
@@ -399,9 +431,7 @@ def upload_files(filepaths,connection_manager,unique_filenames,main_table,dirty_
         # if the filename has already been processed, skip it. This assumes the file has been processed if ANY part of the file has been processed. 
         # in other words, if you're halfway through processing a file with this script, kill the process, and restart, it will assume 
         # That the half-finished file has completely been processed and skip the file. 
-        if filename in unique_filenames:
-            print("File already exists in database, moving on to next file.")
-            continue
+
         # Try reading the file's data and header
         try:
             formatted_RFI_file = read_file(filepath,main_table,dirty_table,connection_manager)
@@ -410,6 +440,9 @@ def upload_files(filepaths,connection_manager,unique_filenames,main_table,dirty_
             print("{}".format(error))
         except InvalidColumnValues:
             print("Column values are invalid. Dropping file.")
+            continue
+        except DuplicateValues:
+            print("File already exists in database, moving on to next file.")
             continue
         # Try uploading that file's data to the appropriate main table
         try:
@@ -441,7 +474,6 @@ def upload_files(filepaths,connection_manager,unique_filenames,main_table,dirty_
                         connection_manager.update_avg_intensity(str(data_entry["Database"]),str(int(current_counts)+ 1),str(intensity_avg),str(frequency_key),str(formatted_RFI_file.get("mjd")))
                         # Finally, we need to put the current line being processed into the duplicate data catalog
                         connection_manager.insert_duplicate_data(str(frequency_key),str(new_intensity),str(formatted_RFI_file.get("filename")))   
-                    # Set the duplicate entry value to true so that we know if this line is a duplicate entry or not 
                     duplicate_entry = True
                 # We have some receiver names that are too generic or specific for our receiver tables, so we're making that consistent
                 frontend_for_rcvr_table = rfitrends.GBT_receiver_specs.PrepareFrontendInput(formatted_RFI_file.get("frontend"))
@@ -475,15 +507,15 @@ def update_caching_tables(frequency_key,data_entry,frontend_for_rcvr_table,conne
         connection_manager.update_latest_projid(str(formatted_RFI_file.get("projid")),frontend_for_rcvr_table)
         # and update mjd:
         connection_manager.update_latest_date(str(formatted_RFI_file.get("mjd")),frontend_for_rcvr_table)
-        # The new latest project is the most recent project we just updated
-        latest_projid = str(formatted_RFI_file.get("projid"))
         # Before we replace the previous latest project with the current one, we want to drop the table containing the previous latest projects' data:
         if latest_projid != "None":
             connection_manager.drop_table(latest_projid)
-    # Finally, we want to make a new table containing the previous latest project's data:
+        # We want to make a new table containing the previous latest project's data:
+        connection_manager.projid_table_maker(str(formatted_RFI_file.get("projid")))
+        # The new latest project is the most recent project we just updated
+        latest_projid = str(formatted_RFI_file.get("projid"))
+           
     if formatted_RFI_file.get("projid") == latest_projid and (formatted_RFI_file.get("projid") != 'NaN'):
-        # Create new table of data
-        connection_manager.projid_table_maker(latest_projid)
         # Populate that table with this info
         connection_manager.projid_populate_table(str(formatted_RFI_file.get("projid")),str(frequency_key),str(formatted_RFI_file.get("mjd")))
 
@@ -517,12 +549,10 @@ if __name__ == "__main__":
     connection_manager = rfitrends.connection_manager.connection_manager(IP_address,database)
     # Collect filenames/paths from the directory specified and product a list of those names to run
     filepaths_to_process = gather_filepaths_to_process(path)
-    # Gather a list of the filenames already processed and in the table
-    processed_filenames = gather_processed_filenames(connection_manager,main_table)
     # Going through each file one by one
     print("starting to upload files one by one...")
     # Upload files to database
-    upload_files(filepaths_to_process,connection_manager,processed_filenames,main_table,dirty_table)
+    upload_files(filepaths_to_process,connection_manager,main_table,dirty_table)
     print("All files uploaded.")
 
 
