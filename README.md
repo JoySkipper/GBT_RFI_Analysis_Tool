@@ -1,5 +1,7 @@
 # GBT_RFI_Analysis_Tool
-A tool to analyze radio frequency interference data taken from the Green Bank Telescope. Assumes that we do not observe at frequencies below 245 MHz. 
+A tool to upload processed radio frequency interference data taken from the Green Bank Telescope to a given SQL database. Assumes that we do not observe at frequencies below 245 MHz. 
+
+If you wish to only process radio frequency interference data, please examine the GBT RFI Pipline (https://github.com/JoySkipper/GBT_RFI_pipeline).
 
 ## Installation Requirements:
 
