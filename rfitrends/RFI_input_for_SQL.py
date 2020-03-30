@@ -27,6 +27,7 @@ import json
 import mysql
 import traceback
 from mysql import connector
+from decimal import *
 
 # Creating RaiseError classes (custom Error messages)
 # Even though the object does nothing, it will still allow 
@@ -120,6 +121,7 @@ def read_file(filepath,main_database,dirty_database, connection_manager):
     all_file_info["frontend"] = rfitrends.GBT_receiver_specs.FrontendVerification(all_file_info["frontend"])
     # Pulls filename from full path to filename
     all_file_info["filename"] = filepath.split("/")[-1]
+    
 
     # Loop until we find the first valid data line, which we need to lookup the primary key:
     last_pos = f.tell()
@@ -128,23 +130,15 @@ def read_file(filepath,main_database,dirty_database, connection_manager):
     while True:
         try:
             first_data_entry = ReadFileLine_ColumnValues(has_header, first_data_line.strip().split(), all_file_info['Column names'], f.name)
-        except InvalidIntensity:
-            # If the velocity is invalid, then continue to read the next line:
+            first_data_entry["Frequency_MHz"] = FrequencyVerification(first_data_entry["Frequency_MHz"],all_file_info) 
+        except (InvalidIntensity,FreqOutsideRcvrBoundsError) as e:
+            # If the velocity is invalid or the Frequency is outside of bounds, then continue to read the next line:
             last_pos = f.tell()
             first_data_line = f.readline()
             continue    
         break
     f.seek(last_pos)
-
-    try:
-        first_data_entry["Frequency_MHz"] = FrequencyVerification(first_data_entry["Frequency_MHz"],all_file_info)    
-    # IF we do get frequencies outside of the bounds that we want, we skip to the next line
-    except FreqOutsideRcvrBoundsError:
-        # This is a dirty table. The error handling below will catch it, so we just need the old frequency value. We mainly want the verification and change 
-        # Here in case the line is valid and needs tweaking (GHz to MHz, for example) 
-        # Assumes that if one value in a file is bad, that they all will be
-        pass
-
+    
     first_line_entry = dict(all_file_info)
     first_line_entry.update(first_data_entry)
     # Getting primary composite key from config file:
@@ -408,6 +402,8 @@ def FrequencyVerification(frequency_value,header):
     # Correct frequency should be in this case. 
     if float(validated_frequency) < (freq_min - freq_buffer) or float(validated_frequency) > (freq_max + freq_buffer):
         raise FreqOutsideRcvrBoundsError
+    # Make the frequency key the same format as the table. Assumes we never need more than 4 decimals of precision
+    validated_frequency = Decimal(validated_frequency).quantize(Decimal('0.0001'),rounding=ROUND_DOWN)
     return validated_frequency
 
 
@@ -445,51 +441,55 @@ def upload_files(filepaths,connection_manager,main_table,dirty_table):
             print("File already exists in database, moving on to next file.")
             continue
         # Try uploading that file's data to the appropriate main table
-        try:
-            # For each line of data, upload line to the main database
-            for frequency_key,data_entry in formatted_RFI_file.get("Data").items():#for each value in that multi-valued set
-                # Fill in missing columns if necessary (in other words, if we're missing a window or channel column, fill it with "NaN" values)
-                data_entry = manage_missing_cols(data_entry).getdata_entry()
-                # Try executing query
-                try:
-                    connection_manager.add_main_values(data_entry,formatted_RFI_file,str(frequency_key))
-                    duplicate_entry = False
-                # If we find a duplicate entry, we will up the counts and average the intensities
-                except mysql.connector.errors.IntegrityError:
-                    # Get intensity,filename, and counts from the line in the table that the line you're currently trying to upload conflicts with
-                    responses = connection_manager.grab_values_for_avg_intensity(str(data_entry["Database"]),str(frequency_key),str(formatted_RFI_file.get("mjd")))
-                    # For each conflicting value (there should only be one, but just in case we iterate through)
-                    for response in responses:
-                        # Calculating average intensity
-                        current_counts = response[2]
-                        old_intensity = float(response[0])
-                        new_intensity = float(data_entry["Intensity_Jy"])
-                        intensity_avg = (new_intensity+(old_intensity*float(current_counts)))/(float(current_counts)+1.0)
-                        old_filename = response[1]
-                        # If this file nas not already been labeled as a duplicate, then we need to insert that file's entry into the duplicate table
-                        if old_filename != "Duplicate":
-                            connection_manager.insert_duplicate_data(str(frequency_key),str(old_intensity),str(old_filename))
-                        # We also need to update the intensity with the average of all the duplicate values, reset counts, set window and channel to nan, and 
-                        # Set the filename to duplicate so everyone knows it's in the duplicate database
-                        connection_manager.update_avg_intensity(str(data_entry["Database"]),str(int(current_counts)+ 1),str(intensity_avg),str(frequency_key),str(formatted_RFI_file.get("mjd")))
-                        # Finally, we need to put the current line being processed into the duplicate data catalog
-                        connection_manager.insert_duplicate_data(str(frequency_key),str(new_intensity),str(formatted_RFI_file.get("filename")))   
-                    duplicate_entry = True
-                # We have some receiver names that are too generic or specific for our receiver tables, so we're making that consistent
-                frontend_for_rcvr_table = rfitrends.GBT_receiver_specs.PrepareFrontendInput(formatted_RFI_file.get("frontend"))
-                # Putting composite key values into the receiver table, as long as it's not a duplicate line, and has
-                # been deemed a clean line
-                if frontend_for_rcvr_table != 'Unknown' and not duplicate_entry and data_entry["Database"] != dirty_table:
-                    update_caching_tables(frequency_key,data_entry,frontend_for_rcvr_table,connection_manager,formatted_RFI_file)
+        #try:
+        # For each line of data, upload line to the main database
+        for frequency_key,data_entry in formatted_RFI_file.get("Data").items():#for each value in that multi-valued set
+            # We do this again in case this is a dirty table where frequency verification has failed
+            frequency_key = Decimal(frequency_key).quantize(Decimal('0.0001'),rounding=ROUND_DOWN)
+            # Fill in missing columns if necessary (in other words, if we're missing a window or channel column, fill it with "NaN" values)
+            data_entry = manage_missing_cols(data_entry).getdata_entry()
+            # Try executing query
+            try:
+                connection_manager.add_main_values(data_entry,formatted_RFI_file,str(frequency_key))
+                duplicate_entry = False
+            # If we find a duplicate entry, we will up the counts and average the intensities
+            except mysql.connector.errors.IntegrityError:
+                # Get intensity,filename, and counts from the line in the table that the line you're currently trying to upload conflicts with
+                responses = connection_manager.grab_values_for_avg_intensity(str(data_entry["Database"]),str(frequency_key),str(formatted_RFI_file.get("mjd")))
+                # For each conflicting value (there should only be one, but just in case we iterate through)
+                for response in responses:
+                    # Calculating average intensity
+                    current_counts = response[2]
+                    old_intensity = float(response[0])
+                    new_intensity = float(data_entry["Intensity_Jy"])
+                    intensity_avg = (new_intensity+(old_intensity*float(current_counts)))/(float(current_counts)+1.0)
+                    old_filename = response[1]
+                    # If this file nas not already been labeled as a duplicate, then we need to insert that file's entry into the duplicate table
+                    if old_filename != "Duplicate":
+                        connection_manager.insert_duplicate_data(str(frequency_key),str(old_intensity),str(old_filename))
+                    # We also need to update the intensity with the average of all the duplicate values, reset counts, set window and channel to nan, and 
+                    # Set the filename to duplicate so everyone knows it's in the duplicate database
+                    connection_manager.update_avg_intensity(str(data_entry["Database"]),str(int(current_counts)+ 1),str(intensity_avg),str(frequency_key),str(formatted_RFI_file.get("mjd")))
+                    # Finally, we need to put the current line being processed into the duplicate data catalog
+                    connection_manager.insert_duplicate_data(str(frequency_key),str(new_intensity),str(formatted_RFI_file.get("filename")))   
+                duplicate_entry = True
+            # We have some receiver names that are too generic or specific for our receiver tables, so we're making that consistent
+            frontend_for_rcvr_table = rfitrends.GBT_receiver_specs.PrepareFrontendInput(formatted_RFI_file.get("frontend"))
+            # Putting composite key values into the receiver table, as long as it's not a duplicate line, and has
+            # been deemed a clean line
+            if frontend_for_rcvr_table != 'Unknown' and not duplicate_entry and data_entry["Database"] != dirty_table:
+                update_caching_tables(frequency_key,data_entry,frontend_for_rcvr_table,connection_manager,formatted_RFI_file)
         # If there's any other error we encounter not yet handled, print out the error, some other info, and gracefully exit. 
+        """
         except mysql.connector.errors.IntegrityError as Error:
             print("There was an error, here is the message: ")
             traceback.print_tb(Error.__traceback__)
             # print(Error)
-            print("Frequency: "+frequency_key)
+            print("Frequency: "+str(frequency_key))
             print("Data: "+str(data_entry))
             connection_manager.previous_line_query(data_entry["Database"],str(formatted_RFI_file.get("mjd")),str(frequency_key))
             sys.exit()
+        """
 
         print(str(filename)+" uploaded.")
 
@@ -502,7 +502,7 @@ def update_caching_tables(frequency_key,data_entry,frontend_for_rcvr_table,conne
     for row in rows: 
         latest_projid = row[0]
         latest_mjd  = row[1]
-    if latest_mjd < float(formatted_RFI_file.get("mjd")) and (formatted_RFI_file.get("projid") != 'NaN'):
+    if latest_mjd < Decimal(formatted_RFI_file.get("mjd")) and (formatted_RFI_file.get("projid") != 'NaN'):
         # Now we want to update the project id for the latest-project table:
         connection_manager.update_latest_projid(str(formatted_RFI_file.get("projid")),frontend_for_rcvr_table)
         # and update mjd:
