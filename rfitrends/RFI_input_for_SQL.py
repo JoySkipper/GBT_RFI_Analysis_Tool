@@ -28,6 +28,7 @@ import mysql
 import traceback
 from mysql import connector
 from decimal import *
+from pkg_resources import resource_filename,resource_exists,Requirement
 
 # Creating RaiseError classes (custom Error messages)
 # Even though the object does nothing, it will still allow 
@@ -143,7 +144,7 @@ def read_file(filepath,main_database,dirty_database, connection_manager):
     first_line_entry.update(first_data_entry)
     # Getting primary composite key from config file:
     config = configparser.ConfigParser()
-    config.read("rfitrends.conf")
+    config.read(resource_filename('rfitrends',"rfitrends.conf"))
     composite_keys = json.loads(config['Mandatory Fields']['primary_composite_key'])
     search_query = "SELECT * from "+main_database+" WHERE "
     # Searching by all the values in the composite key
@@ -182,9 +183,9 @@ def read_file(filepath,main_database,dirty_database, connection_manager):
         # If data entry is already in data, we have a repeat value within a file. We just up the counts, avg the intensity, 
         # And NaN out Window and Channel as they no longer have meaning since it is an average of 2 points
         if data_entry["Frequency_MHz"] in data:
-            counts = data[data_entry["Frequency_MHz"]]["Counts"]
-            old_intensity = data[data_entry["Frequency_MHz"]]["Intensity_Jy"]
-            new_intensity = data_entry["Frequency_MHz"]["Intensity_Jy"]
+            counts = float(data[data_entry["Frequency_MHz"]]["Counts"])
+            old_intensity = float(data[data_entry["Frequency_MHz"]]["Intensity_Jy"])
+            new_intensity = float(data_entry["Intensity_Jy"])
             avg_intensity = (old_intensity*counts + new_intensity)/(counts+1)
             data[data_entry["Frequency_MHz"]]["Window"] = "NaN"
             data[data_entry["Frequency_MHz"]]["Channel"] = "NaN"
@@ -347,7 +348,7 @@ def ReadFileLine_ColumnValues(has_header,line_value: list,column_names,filepath)
         fixed_column_names.append(fixed_column_name)
     # We also need to check that required columns in the configuration file exist somewhere in these columns, as they're needed for any science: 
     config = configparser.ConfigParser()
-    config.read("rfitrends.conf")
+    config.read(resource_filename('rfitrends','rfitrends.conf'))
     mandatory_columns = json.loads(config['Mandatory Fields']['mandatory_columns'])
     for mandatory_column in mandatory_columns:
         if mandatory_column not in fixed_column_names:
