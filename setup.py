@@ -108,6 +108,9 @@ setup(
     # py_modules=['mypackage'],
 
     entry_points={
+        "console_scripts":[
+            "gbtrfiupload = rfitrends.RFI_input_for_SQL:main",
+        ]
     },
     install_requires=REQUIRED,
     extras_require=EXTRAS,
