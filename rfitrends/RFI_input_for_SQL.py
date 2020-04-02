@@ -523,12 +523,7 @@ def update_caching_tables(frequency_key,data_entry,frontend_for_rcvr_table,conne
 
 ########### MAIN #############
 
-if __name__ == "__main__":
-    import ptvsd 
-    # Allow other computers to attach to ptvsd at this IP address and port. 
-    # (Remove this is not running through debugger)
-    ptvsd.enable_attach(address=('10.16.96.210', 3001), redirect_output=True) 
-    ptvsd.wait_for_attach()
+def main():
     # Adding in-line arguments:
     parser = argparse.ArgumentParser(description="Takes .txt files of RFI data and uploads them to the given database")
     parser.add_argument("main_table",help="The string name of the table to which you'd like to upload your clean RFI data")
@@ -556,7 +551,8 @@ if __name__ == "__main__":
     upload_files(filepaths_to_process,connection_manager,main_table,dirty_table)
     print("All files uploaded.")
 
-
+if __name__ == "__main__":
+    main()
         
     
 
