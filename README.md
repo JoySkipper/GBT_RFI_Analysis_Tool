@@ -7,6 +7,8 @@ If you wish to only process radio frequency interference data, please examine th
 
 Python 3.5+
 
+mysql 15.1+
+
 All dependencies are included in the setup.py
 
 
