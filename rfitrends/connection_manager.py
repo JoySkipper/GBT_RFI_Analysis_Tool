@@ -5,9 +5,6 @@
 Code Origin: https://github.com/JoySkipper/GBT_RFI_Analysis_Tool
 """
 
-from pymysql import connect
-from pymysql import cursors
-from pymysql.cursors import Cursor
 from mysql import connector
 import getpass
 
