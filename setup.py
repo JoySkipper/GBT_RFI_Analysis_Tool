@@ -17,7 +17,7 @@ DESCRIPTION = 'A tool to analyze radio frequency interference from the Green Ban
 URL = 'https://github.com/JoySkipper/GBT_RFI_Analysis_Tool'
 EMAIL = 'jskipper@nrao.edu'
 AUTHOR = 'Joy Skipper'
-REQUIRES_PYTHON = '>=3.7.2'
+REQUIRES_PYTHON = '>=3.5.0'
 VERSION = None
 
 # What packages are required for this module to be executed?
