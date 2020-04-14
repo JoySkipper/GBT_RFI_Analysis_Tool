@@ -62,7 +62,7 @@ def gather_filepaths_to_process(path,files_to_process = "all"):
     if files_to_process == "all":
     # making a list of all of the .txt files in the directory so I can just cycle through each full path:
         for filename in os.listdir(path):
-            if filename.endswith(".txt") and filename != "URLs.txt":# If the files are ones we are actually interested in
+            if filename.endswith(".txt") and filename != "URLs.txt" and (filename.startswith('AGBT') or filename.startswith('TRFI') or filename.startswith('TGBT')):# If the files are ones we are actually interested in
                 filepaths.append(os.path.join(path,filename))
                 continue
     else: 
@@ -524,6 +524,11 @@ def update_caching_tables(frequency_key,data_entry,frontend_for_rcvr_table,conne
 ########### MAIN #############
 
 def main():
+    #import ptvsd 
+    # Allow other computers to attach to ptvsd at this IP address and port. 
+    # (Remove this is not running through debugger)
+    #ptvsd.enable_attach(address=('10.16.96.210', 3001), redirect_output=True) 
+    #ptvsd.wait_for_attach()
     # Adding in-line arguments:
     parser = argparse.ArgumentParser(description="Takes .txt files of RFI data and uploads them to the given database")
     parser.add_argument("main_table",help="The string name of the table to which you'd like to upload your clean RFI data")
