@@ -148,7 +148,6 @@ def read_file(filepath,main_database,dirty_database, connection_manager):
     composite_keys = json.loads(config['Mandatory Fields']['primary_composite_key'])
     search_query_main = "SELECT * from "+main_database+" WHERE "
     search_query_dirty = "SELECT * from "+dirty_database+" WHERE filename = \'"+first_line_entry['filename']+"\'"
-    print(search_query_dirty)
     # Searching by all the values in the composite key
     for composite_key in composite_keys:
         search_query_main += composite_key+" = "+str(first_line_entry[composite_key])+" AND "
@@ -448,7 +447,8 @@ def upload_files(filepaths,connection_manager,main_table,dirty_table):
         # Try uploading that file's data to the appropriate main table
         # For each line of data, upload line to the main database
         dirty_filename_entered = False
-        for frequency_key,data_entry in formatted_RFI_file.get("Data").items():#for each value in that multi-valued set
+        for index,frequency_key,data_entry in enumerate(formatted_RFI_file.get("Data").items()):#for each value in that multi-valued set
+            print("Uploading line "+str(index)+" of "+len(formatted_RFI_file.get("Data"))+" for "+str(filename)+" ("+str(filenum+1)+" of "+str(len(filepaths))+")")
             # We do this again in case this is a dirty table where frequency verification has failed
             frequency_key = Decimal(frequency_key).quantize(Decimal('0.0001'),rounding=ROUND_DOWN)
             # Fill in missing columns if necessary (in other words, if we're missing a window or channel column, fill it with "NaN" values)
@@ -486,7 +486,6 @@ def upload_files(filepaths,connection_manager,main_table,dirty_table):
             frontend_for_rcvr_table = rfitrends.GBT_receiver_specs.PrepareFrontendInput(formatted_RFI_file.get("frontend"))
             # Putting composite key values into the receiver table, as long as it's not a duplicate line, and has
             # been deemed a clean line
-            print('main table values added. Updating receiver tables.')
             if frontend_for_rcvr_table != 'Unknown' and not duplicate_entry and data_entry["Database"] != dirty_table:
                 update_caching_tables(frequency_key,data_entry,frontend_for_rcvr_table,connection_manager,formatted_RFI_file)
         # If there's any other error we encounter not yet handled, print out the error, some other info, and gracefully exit. 
