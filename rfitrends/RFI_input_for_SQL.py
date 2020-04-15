@@ -455,7 +455,7 @@ def upload_files(filepaths,connection_manager,main_table,dirty_table):
             # Try executing query
             try:
                 connection_manager.add_main_values(data_entry,formatted_RFI_file,str(frequency_key))
-                if data_entry['Database'] == dirty_table and dirty_filename_entered = False:
+                if data_entry['Database'] == dirty_table and dirty_filename_entered == False:
                     insert_dirty_filename = 'INSERT INTO Bad_files (filename) VALUES ('+data_entry['filename']+');'
                     connection_manager.execute_command(insert_dirty_filename)
                     dirty_filename_entered = True
