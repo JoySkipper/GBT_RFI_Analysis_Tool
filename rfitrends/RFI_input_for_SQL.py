@@ -443,7 +443,7 @@ def upload_files(filepaths,connection_manager,main_table,dirty_table):
         except DuplicateValues:
             print("File already exists in database, moving on to next file.")
             continue
-	print('file extracted, uploading.')
+        print('file extracted, uploading.')
         # Try uploading that file's data to the appropriate main table
         # For each line of data, upload line to the main database
         dirty_filename_entered = False
