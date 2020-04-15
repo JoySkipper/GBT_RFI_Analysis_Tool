@@ -147,7 +147,8 @@ def read_file(filepath,main_database,dirty_database, connection_manager):
     config.read(resource_filename('rfitrends',"rfitrends.conf"))
     composite_keys = json.loads(config['Mandatory Fields']['primary_composite_key'])
     search_query_main = "SELECT * from "+main_database+" WHERE "
-    search_query_dirty = "SELECT * from "+dirty_database+" WHERE filename = "+first_line_entry['filename']
+    search_query_dirty = "SELECT * from "+dirty_database+" WHERE filename = \'"+first_line_entry['filename']+"\'"
+    print(search_query_dirty)
     # Searching by all the values in the composite key
     for composite_key in composite_keys:
         search_query_main += composite_key+" = "+str(first_line_entry[composite_key])+" AND "
