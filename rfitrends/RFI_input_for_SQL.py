@@ -146,15 +146,17 @@ def read_file(filepath,main_database,dirty_database, connection_manager):
     config = configparser.ConfigParser()
     config.read(resource_filename('rfitrends',"rfitrends.conf"))
     composite_keys = json.loads(config['Mandatory Fields']['primary_composite_key'])
-    search_query = "SELECT * from "+main_database+" WHERE "
+    search_query_main = "SELECT * from "+main_database+" WHERE "
+    search_query_dirty = "SELECT * from "+dirty_database+" WHERE filename = "first_line_entry['filename']
     # Searching by all the values in the composite key
     for composite_key in composite_keys:
-        search_query += composite_key+" = "+str(first_line_entry[composite_key])+" AND "
+        search_query_main += composite_key+" = "+str(first_line_entry[composite_key])+" AND "
     # Removing last " AND "
-    search_query = search_query[:-4]
+    search_query_main = search_query_main[:-4]
     # Execute query and see if there's a duplicate primary key with the first line and the database. If so, raise error
-    myresult = connection_manager.execute_command(search_query)
-    if myresult:
+    myresult_main = connection_manager.execute_command(search_query_main)
+    myresult_dirty = connection_manager.execute_command(search_query_dirty)
+    if myresult_main or myresult_dirty:
         raise DuplicateValues
 
 
@@ -441,9 +443,10 @@ def upload_files(filepaths,connection_manager,main_table,dirty_table):
         except DuplicateValues:
             print("File already exists in database, moving on to next file.")
             continue
+	print('file extracted, uploading.')
         # Try uploading that file's data to the appropriate main table
-        #try:
         # For each line of data, upload line to the main database
+        dirty_filename_entered = False
         for frequency_key,data_entry in formatted_RFI_file.get("Data").items():#for each value in that multi-valued set
             # We do this again in case this is a dirty table where frequency verification has failed
             frequency_key = Decimal(frequency_key).quantize(Decimal('0.0001'),rounding=ROUND_DOWN)
@@ -452,6 +455,10 @@ def upload_files(filepaths,connection_manager,main_table,dirty_table):
             # Try executing query
             try:
                 connection_manager.add_main_values(data_entry,formatted_RFI_file,str(frequency_key))
+                if data_entry['Database'] == dirty_table and dirty_filename_entered = False:
+                    insert_dirty_filename = 'INSERT INTO Bad_files (filename) VALUES ('+data_entry['filename']+');'
+                    connection_manager.execute_command(insert_dirty_filename)
+                    dirty_filename_entered = True
                 duplicate_entry = False
             # If we find a duplicate entry, we will up the counts and average the intensities
             except mysql.connector.errors.IntegrityError:
@@ -478,6 +485,7 @@ def upload_files(filepaths,connection_manager,main_table,dirty_table):
             frontend_for_rcvr_table = rfitrends.GBT_receiver_specs.PrepareFrontendInput(formatted_RFI_file.get("frontend"))
             # Putting composite key values into the receiver table, as long as it's not a duplicate line, and has
             # been deemed a clean line
+            print('main table values added. Updating receiver tables.')
             if frontend_for_rcvr_table != 'Unknown' and not duplicate_entry and data_entry["Database"] != dirty_table:
                 update_caching_tables(frequency_key,data_entry,frontend_for_rcvr_table,connection_manager,formatted_RFI_file)
         # If there's any other error we encounter not yet handled, print out the error, some other info, and gracefully exit. 
