@@ -450,7 +450,7 @@ def upload_files(filepaths,connection_manager,main_table,dirty_table):
         for index,frequency_key in enumerate(formatted_RFI_file.get("Data")):#for each value in that multi-valued set
             # The actual data entry
             data_entry = formatted_RFI_file.get('Data')[frequency_key]
-            print("Uploading line "+str(index)+" of "+len(formatted_RFI_file.get("Data"))+" for "+str(filename)+" ("+str(filenum+1)+" of "+str(len(filepaths))+")")
+            print("Uploading line "+str(index)+" of "+str(len(formatted_RFI_file.get("Data")))+" for "+str(filename)+" ("+str(filenum+1)+" of "+str(len(filepaths))+")")
             # We do this again in case this is a dirty table where frequency verification has failed
             frequency_key = Decimal(frequency_key).quantize(Decimal('0.0001'),rounding=ROUND_DOWN)
             # Fill in missing columns if necessary (in other words, if we're missing a window or channel column, fill it with "NaN" values)
