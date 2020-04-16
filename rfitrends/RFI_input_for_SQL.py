@@ -108,7 +108,6 @@ def read_file(filepath,main_database,dirty_database, connection_manager):
     # Since we read the first line, we want to reset the reader so it will reread the first line
     # When parsing the header. 
     f.seek(0)
-
     # If it has a header, we want to process it, if it doesn't, we will extrapolate what info we can
     if has_header:
         all_file_info,first_data_line = process_header(f)
@@ -118,7 +117,6 @@ def read_file(filepath,main_database,dirty_database, connection_manager):
         first_data_line = f.readline()
         # Set the reader back to the first line
         f.seek(0)
-
     # Verifies that frontend given exists, otherwise labels it as Unknown. 
     all_file_info["frontend"] = rfitrends.GBT_receiver_specs.FrontendVerification(all_file_info["frontend"])
     # Pulls filename from full path to filename
@@ -160,7 +158,7 @@ def read_file(filepath,main_database,dirty_database, connection_manager):
     if myresult_main or myresult_dirty:
         raise DuplicateValues
 
-
+    print("File does not exist in database. Reading in data. This can take a few minutes.")
     # Going through each line in the file one by one:
     for data_line in f:
         # If it's just a new line, we skip the line
@@ -444,7 +442,9 @@ def upload_files(filepaths,connection_manager,main_table,dirty_table):
         except DuplicateValues:
             print("File already exists in database, moving on to next file.")
             continue
-        print('file extracted, uploading.')
+        print('File extracted. Uploading to database.')
+        print(str(len(formatted_RFI_file.get('Data')))+' lines to upload (labeled as \'it\' or \'iterations\' below)')
+        print('iterations [time elapsed, iterations per second]')
         # Try uploading that file's data to the appropriate main table
         # For each line of data, upload line to the main database
         dirty_filename_entered = False
@@ -460,7 +460,7 @@ def upload_files(filepaths,connection_manager,main_table,dirty_table):
             try:
                 connection_manager.add_main_values(data_entry,formatted_RFI_file,str(frequency_key))
                 if data_entry['Database'] == dirty_table and dirty_filename_entered == False:
-                    insert_dirty_filename = 'INSERT INTO Bad_files (filename) VALUES ('+data_entry['filename']+');'
+                    insert_dirty_filename = 'INSERT INTO Bad_files (filename) VALUES (\''+filename+'\');'
                     connection_manager.execute_command(insert_dirty_filename)
                     dirty_filename_entered = True
                 duplicate_entry = False
