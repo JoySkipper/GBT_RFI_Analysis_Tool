@@ -229,10 +229,10 @@ def process_header(file):
             column_line = f.readline()
             # peak at data line so we can seek back to it. 
             current_line = f.tell()
-                first_data_line = f.readline()
-                    # Assumes column names are separated by variable number of spaces/tabs
+            first_data_line = f.readline()
+            # Assumes column names are separated by variable number of spaces/tabs
             column_entries = column_line.strip('#').split()
-                    header['Column names'] = column_entries
+            header['Column names'] = column_entries
             # We've reached data line, time to get out of the loop
             f.seek(current_line)
             break
