@@ -218,45 +218,41 @@ def process_header(file):
     line = f.readline()
     # Read the file
     while line:
-        # Header entries are denoted via '#' symbol
-        if '#' in line:
-            # Standard header entries are denoted via "key: value" 
-            try:
+        if 'HEADER' in line or 'Header' in line: 
+            # Again emulating a do while loop
+            previous_line_position = f.tell()
+            line = f.readline()
+            continue
+        elif 'DATA' in line or 'Data' in line: 
+            # We know next line is column data. 
+            # Read the next line
+            column_line = f.readline()
+            # peak at data line so we can seek back to it. 
+            current_line = f.tell()
+                first_data_line = f.readline()
+                    # Assumes column names are separated by variable number of spaces/tabs
+            column_entries = column_line.strip('#').split()
+                    header['Column names'] = column_entries
+            # We've reached data line, time to get out of the loop
+            f.seek(current_line)
+            break
+        else:
+            # We know this is a regular header line
+            try: 
                 header_entry = line.strip('#').strip().split(":")
                 header[header_entry[0]] = header_entry[1].strip()
-            except:
-                # If not, there are two possibilities:
-                # (1) Title lines (meant to be skipped)
-                # (2) Column names (in which case it is directly preceded by data (non header line))
+            except IndexError:
+                header_entry = previous_header_entry
+                header_entry[1] += line
+                header[header_entry[0]] = header_entry[1].strip()
+                # This must be a wrapped line from the previous header line
 
-                # Peek ahead at next line
-                current_position = f.tell()
-                # If there is no '#' symbol, the next line is data, therefore this line denotes the column names
-                first_data_line = f.readline()
-                if "#" not in first_data_line:
-                    # Assumes column names are separated by variable number of spaces/tabs
-                    column_entries = line.strip('#').split()
-                    header['Column names'] = column_entries
-
-                # Otherwise it's either a title line, or we don't support the syntax. Regardless, we should skip it
-                else:
-                    #print("Skipping header line: " + line)
-                    pass
-                # Undo our peek so we can process appropriately
-                f.seek(current_position)
-
-        # If there is no header indicator ('#'), we've reached our data entries
-        # Works under assumption that data entries are last in file
-        else:
-            # Revert to last line and exit loop. We've finished parsing our header
-            f.seek(previous_line_position)
-            break
-
+        previous_header_entry = header_entry
         # Again emulating a do while loop
         previous_line_position = f.tell()
         line = f.readline()
-
     return(header,first_data_line)
+
 
 def extrapolate_header(filepath):
     """
