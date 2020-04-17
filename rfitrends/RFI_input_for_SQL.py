@@ -279,6 +279,7 @@ def extrapolate_header(filepath):
     #Calculating MJD...
     jd = julian.to_jd(date+ datetime.timedelta(hours=12),fmt='jd')
     mjd = jd  - 2400000.5
+    mjd = Decimal(mjd).quantize(Decimal('0.001'),rounding=ROUND_DOWN)
     extrapolated_header.update({"mjd": mjd})
     # Getting Az and El from their location in the filename again, two numbers (this is pretty standard, so we can trust these values unlike dates)
     extrapolated_header.update({"azimuth (deg)":float(filename[7][2:])})
