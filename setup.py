@@ -22,7 +22,7 @@ VERSION = None
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    'numpy', 'matplotlib', 'julian', 'mysql-connector-python',
+    'numpy', 'matplotlib', 'julian', 'mysql-connector-python','tqdm',
 ]
 
 # What packages are optional?
